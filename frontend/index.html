@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DawaTrace — Medicine Verification</title>
+    <meta name="description"
+        content="Verify medicine authenticity on the blockchain. Scan a QR code or enter a batch ID to instantly check if your medicine is genuine.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="brand-icon">💊</div>
+                <span class="brand-text">DawaTrace</span>
+                <span class="brand-badge">BETA</span>
+            </div>
+            <button class="hamburger" id="hamburger"
+                onclick="document.querySelector('.nav-links').classList.toggle('open')">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links">
+                <a href="#verify" class="nav-link active" data-page="verify">Verify Medicine</a>
+                <a href="#dashboard" class="nav-link" data-page="dashboard">Manufacturer</a>
+                <a href="#track" class="nav-link" data-page="track">Track Batch</a>
+                <a href="#about" class="nav-link" data-page="about">About</a>
+            </div>
+            <button class="wallet-btn" id="connectWallet">
+                <span class="wallet-dot"></span>
+                Connect Wallet
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero / Verify Page -->
+    <main>
+        <!-- ===== VERIFY PAGE ===== -->
+        <section class="page active" id="page-verify">
+            <div class="hero">
+                <div class="hero-bg-pattern"></div>
+                <div class="hero-content">
+                    <div class="hero-badge">🛡️ Blockchain-Powered Verification</div>
+                    <h1>Is Your Medicine <span class="gradient-text">Genuine?</span></h1>
+                    <p class="hero-subtitle">
+                        1 in 10 medicines in developing countries are fake or substandard.
+                        DawaTrace lets you verify any medicine's authenticity in seconds using blockchain technology.
+                    </p>
+
+                    <div class="verify-box">
+                        <div class="verify-tabs">
+                            <button class="verify-tab active" data-tab="scan">📷 Scan QR Code</button>
+                            <button class="verify-tab" data-tab="manual">⌨️ Enter Batch ID</button>
+                        </div>
+
+                        <div class="verify-content" id="tab-scan">
+                            <div class="qr-scanner-container">
+                                <div id="qr-reader" class="qr-reader">
+                                    <div class="qr-placeholder">
+                                        <div class="qr-frame"></div>
+                                        <p>Click to start camera</p>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-lg" id="startScan">
+                                    📷 Start Scanner
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="verify-content hidden" id="tab-manual">
+                            <div class="input-group">
+                                <input type="text" id="batchIdInput" placeholder="Enter Batch ID (0x...)"
+                                    class="input-field">
+                                <button class="btn btn-primary" id="verifyBtn">
+                                    🔍 Verify
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Result -->
+            <div class="result-section hidden" id="resultSection">
+                <div class="result-card" id="resultCard">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number" id="statVerifications">0</div>
+                    <div class="stat-label">Verifications</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="statBatches">0</div>
+                    <div class="stat-label">Registered Batches</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="statParticipants">0</div>
+                    <div class="stat-label">Participants</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">Kenya 🇰🇪</div>
+                    <div class="stat-label">Pilot Region</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== MANUFACTURER DASHBOARD ===== -->
+        <section class="page hidden" id="page-dashboard">
+            <div class="dashboard-container">
+                <div class="page-header">
+                    <h2>Manufacturer Dashboard</h2>
+                    <p>Register drug batches and generate QR codes for verification</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Register Batch Form -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>💊 Register New Batch</h3>
+                        </div>
+                        <form id="registerForm" class="form">
+                            <div class="form-group">
+                                <label>Drug Name</label>
+                                <input type="text" id="drugName" placeholder="e.g. Amoxicillin 500mg" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Batch Number</label>
+                                <input type="text" id="batchNumber" placeholder="e.g. AMX-BATCH-2026-001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Expiry Date</label>
+                                <input type="date" id="expiryDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label>IPFS Metadata Hash (optional)</label>
+                                <input type="text" id="ipfsHash" placeholder="Qm...">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-full">
+                                Register Batch on Blockchain
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Recent Batches -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📋 Recent Batches</h3>
+                            <button class="btn btn-secondary btn-sm" id="refreshBatches">↻ Refresh</button>
+                        </div>
+                        <div id="batchList" class="batch-list">
+                            <div class="empty-state">
+                                <p>No batches registered yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer Custody -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h3>📦 Transfer Custody</h3>
+                    </div>
+                    <form id="transferForm" class="form form-inline">
+                        <div class="form-group">
+                            <label>Batch ID</label>
+                            <input type="text" id="transferBatchId" placeholder="0x..." required>
+                        </div>
+                        <div class="form-group">
+                            <label>Recipient Address</label>
+                            <input type="text" id="recipientAddress" placeholder="0x..." required>
+                        </div>
+                        <div class="form-group">
+                            <label>Location</label>
+                            <input type="text" id="transferLocation" placeholder="e.g. Nairobi Distribution Hub"
+                                required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Transfer</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== TRACK PAGE ===== -->
+        <section class="page hidden" id="page-track">
+            <div class="dashboard-container">
+                <div class="page-header">
+                    <h2>Track Drug Batch</h2>
+                    <p>View the complete custody chain and provenance trail</p>
+                </div>
+
+                <div class="card">
+                    <div class="input-group" style="margin-bottom: 2rem;">
+                        <input type="text" id="trackBatchId" placeholder="Enter Batch ID (0x...)" class="input-field">
+                        <button class="btn btn-primary" id="trackBtn">🔍 Track</button>
+                    </div>
+
+                    <div id="custodyTimeline" class="timeline">
+                        <div class="empty-state">
+                            <p>Enter a Batch ID to view its journey</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== ABOUT PAGE ===== -->
+        <section class="page hidden" id="page-about">
+            <div class="about-container">
+                <div class="about-hero">
+                    <h2>The Problem We're Solving</h2>
+                    <div class="about-stats">
+                        <div class="about-stat">
+                            <div class="about-stat-number">500K</div>
+                            <div class="about-stat-label">Deaths per year in sub-Saharan Africa from falsified medicines
+                            </div>
+                            <div class="about-stat-source">— UNODC</div>
+                        </div>
+                        <div class="about-stat">
+                            <div class="about-stat-number">1 in 10</div>
+                            <div class="about-stat-label">Medical products in developing countries are substandard or
+                                falsified</div>
+                            <div class="about-stat-source">— WHO</div>
+                        </div>
+                        <div class="about-stat">
+                            <div class="about-stat-number">70%+</div>
+                            <div class="about-stat-label">Of medicines in Kenya are imported through fragmented supply
+                                chains</div>
+                            <div class="about-stat-source">— PPB Kenya</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-section">
+                    <h3>How DawaTrace Works</h3>
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-icon">🏭</div>
+                            <div class="flow-title">Manufacturer</div>
+                            <div class="flow-desc">Registers drug batch on blockchain with unique ID</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">🚛</div>
+                            <div class="flow-title">Distributor</div>
+                            <div class="flow-desc">Confirms receipt, transfers custody on-chain</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">
+                            <div class="flow-icon">🏥</div>
+                            <div class="flow-title">Pharmacy</div>
+                            <div class="flow-desc">Receives batch, custody recorded immutably</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step highlight">
+                            <div class="flow-icon">📱</div>
+                            <div class="flow-title">Consumer</div>
+                            <div class="flow-desc">Scans QR code → instant verification ✅ or ❌</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-section">
+                    <h3>Built With</h3>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Solidity</span>
+                        <span class="tech-tag">Polygon</span>
+                        <span class="tech-tag">Hardhat</span>
+                        <span class="tech-tag">Ethers.js</span>
+                        <span class="tech-tag">QR Code</span>
+                        <span class="tech-tag">Mobile-First</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- QR Code Modal -->
+    <div class="modal hidden" id="qrModal">
+        <div class="modal-backdrop" onclick="closeModal()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <h3>QR Code for Batch</h3>
+            <div id="qrCodeDisplay" class="qr-display"></div>
+            <p class="qr-batch-id" id="qrBatchIdDisplay"></p>
+            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast hidden" id="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
