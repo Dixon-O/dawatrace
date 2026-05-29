@@ -178,7 +178,7 @@ async function connectWallet() {
         contract = null;
         signer = null;
         provider = null;
-        showToast("Wallet disconnected — returned to Demo Mode", "success");
+        showToast("Disconnected", "success");
         enterDemoMode();
         return;
     }
@@ -243,7 +243,7 @@ async function connectWallet() {
         `;
         connectWalletBtn.classList.add("connected");
 
-        showToast("🔗 Connected to Live blockchain!", "success");
+        showToast("Connected", "success");
         loadStats();
         loadBatches();
 
