@@ -191,7 +191,6 @@ async function connectWallet() {
     }
 
     if (!window.ethereum) {
-        showToast("No wallet found — running in Demo Mode", "success");
         enterDemoMode();
         return;
     }
@@ -207,15 +206,19 @@ async function connectWallet() {
         } catch (switchError) {
             // Network doesn't exist — add it
             if (switchError.code === 4902) {
-                await window.ethereum.request({
-                    method: "wallet_addEthereumChain",
-                    params: [{
-                        chainId: HARDHAT_CHAIN_ID,
-                        chainName: "Hardhat Local",
-                        rpcUrls: ["http://127.0.0.1:8545"],
-                        nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-                    }],
-                });
+                try {
+                    await window.ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [{
+                            chainId: HARDHAT_CHAIN_ID,
+                            chainName: "Hardhat Local",
+                            rpcUrls: ["http://127.0.0.1:8545"],
+                            nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+                        }],
+                    });
+                } catch (addError) {
+                    console.log("Could not auto-add local RPC (common in Trust Wallet). Using current network.", addError);
+                }
             }
         }
 
@@ -240,7 +243,7 @@ async function connectWallet() {
         `;
         connectWalletBtn.classList.add("connected");
 
-        showToast("🔗 Connected to Hardhat blockchain!", "success");
+        showToast("🔗 Connected to Live blockchain!", "success");
         loadStats();
         loadBatches();
 
@@ -249,7 +252,6 @@ async function connectWallet() {
 
     } catch (err) {
         console.error("Connection error:", err);
-        showToast("Blockchain unavailable — using Demo Mode", "success");
         enterDemoMode();
     }
 }
