@@ -75,6 +75,56 @@ async function main() {
     await tx.wait();
     console.log(`   ✅ Registered Batch: DWT-ART-2025-0812 (Artemether - EXPIRED)`);
 
+    // Batch 4: Ciprofloxacin (Authentic)
+    tx = await registry.connect(manufacturer).registerDrugBatch(
+        "Ciprofloxacin 500mg",
+        "DWT-CIP-2025-1120",
+        exp2,
+        ""
+    );
+    await tx.wait();
+    console.log(`   ✅ Registered Batch: DWT-CIP-2025-1120 (Ciprofloxacin)`);
+
+    // Batch 5: Ibuprofen (Authentic)
+    tx = await registry.connect(manufacturer).registerDrugBatch(
+        "Ibuprofen 400mg",
+        "DWT-IBU-2026-0610",
+        exp1,
+        ""
+    );
+    await tx.wait();
+    console.log(`   ✅ Registered Batch: DWT-IBU-2026-0610 (Ibuprofen)`);
+
+    // Batch 6: Metformin (Authentic)
+    tx = await registry.connect(manufacturer).registerDrugBatch(
+        "Metformin 500mg",
+        "DWT-MET-2026-0301",
+        exp2,
+        ""
+    );
+    await tx.wait();
+    console.log(`   ✅ Registered Batch: DWT-MET-2026-0301 (Metformin)`);
+
+    // Batch 7: Omeprazole (Authentic)
+    tx = await registry.connect(manufacturer).registerDrugBatch(
+        "Omeprazole 20mg",
+        "DWT-OME-2026-0915",
+        exp1,
+        ""
+    );
+    await tx.wait();
+    console.log(`   ✅ Registered Batch: DWT-OME-2026-0915 (Omeprazole)`);
+
+    // Batch 8: Azithromycin (Authentic)
+    tx = await registry.connect(manufacturer).registerDrugBatch(
+        "Azithromycin 250mg",
+        "DWT-AZI-2026-0130",
+        exp2,
+        ""
+    );
+    await tx.wait();
+    console.log(`   ✅ Registered Batch: DWT-AZI-2026-0130 (Azithromycin)`);
+
     console.log("\n📦 Transferring custody for DWT-AMX-2026-0528...");
     const batchIdAMX = await registry.getBatchIdAtIndex(0);
     await registry.connect(manufacturer).transferCustody(

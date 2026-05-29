@@ -68,8 +68,57 @@ const DEMO_DB = {
             ipfsMetadataHash: "",
             exists: true,
             custodyCount: 3,
-            isAuthentic: true,
             isExpired: true
+        },
+        "DWT-CIP-2025-1120": {
+            drugName: "Ciprofloxacin 500mg",
+            batchNumber: "CIP-BATCH-2025-1120",
+            manufacturerName: "Kenya Pharma Ltd",
+            manufacturer: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            manufactureDate: Math.floor(Date.now() / 1000) - 86400 * 10,
+            expiryDate: Math.floor(Date.now() / 1000) + 86400 * 300,
+            ipfsMetadataHash: "",
+            exists: true, custodyCount: 1, isAuthentic: true, isExpired: false
+        },
+        "DWT-IBU-2026-0610": {
+            drugName: "Ibuprofen 400mg",
+            batchNumber: "IBU-BATCH-2026-0610",
+            manufacturerName: "Beta Healthcare Intl",
+            manufacturer: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+            manufactureDate: Math.floor(Date.now() / 1000) - 86400 * 5,
+            expiryDate: Math.floor(Date.now() / 1000) + 86400 * 365,
+            ipfsMetadataHash: "",
+            exists: true, custodyCount: 1, isAuthentic: true, isExpired: false
+        },
+        "DWT-MET-2026-0301": {
+            drugName: "Metformin 500mg",
+            batchNumber: "MET-BATCH-2026-0301",
+            manufacturerName: "Universal Corp of Kenya",
+            manufacturer: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+            manufactureDate: Math.floor(Date.now() / 1000) - 86400 * 20,
+            expiryDate: Math.floor(Date.now() / 1000) + 86400 * 300,
+            ipfsMetadataHash: "",
+            exists: true, custodyCount: 1, isAuthentic: true, isExpired: false
+        },
+        "DWT-OME-2026-0915": {
+            drugName: "Omeprazole 20mg",
+            batchNumber: "OME-BATCH-2026-0915",
+            manufacturerName: "Kenya Pharma Ltd",
+            manufacturer: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            manufactureDate: Math.floor(Date.now() / 1000) - 86400 * 2,
+            expiryDate: Math.floor(Date.now() / 1000) + 86400 * 365,
+            ipfsMetadataHash: "",
+            exists: true, custodyCount: 1, isAuthentic: true, isExpired: false
+        },
+        "DWT-AZI-2026-0130": {
+            drugName: "Azithromycin 250mg",
+            batchNumber: "AZI-BATCH-2026-0130",
+            manufacturerName: "Beta Healthcare Intl",
+            manufacturer: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+            manufactureDate: Math.floor(Date.now() / 1000) - 86400 * 30,
+            expiryDate: Math.floor(Date.now() / 1000) + 86400 * 300,
+            ipfsMetadataHash: "",
+            exists: true, custodyCount: 1, isAuthentic: true, isExpired: false
         }
     },
 
