@@ -156,11 +156,12 @@ async function init() {
 
 function enterDemoMode() {
     demoMode = true;
+    isConnected = false;
     connectWalletBtn.innerHTML = `
-        <span class="wallet-dot" style="background: var(--accent-green);"></span>
-        Demo Mode
+        <span class="wallet-dot"></span>
+        Connect Wallet
     `;
-    connectWalletBtn.classList.add("connected");
+    connectWalletBtn.classList.remove("connected");
     loadStats();
     loadBatches();
     console.log("🎮 DawaTrace running in Demo Mode");
@@ -171,6 +172,17 @@ function enterDemoMode() {
 // ============================================================
 
 async function connectWallet() {
+    if (isConnected) {
+        isConnected = false;
+        demoMode = true;
+        contract = null;
+        signer = null;
+        provider = null;
+        showToast("Wallet disconnected — returned to Demo Mode", "success");
+        enterDemoMode();
+        return;
+    }
+
     if (!window.ethereum) {
         for (let i = 0; i < 30; i++) {
             await new Promise(r => setTimeout(r, 100));
