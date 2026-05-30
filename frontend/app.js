@@ -159,6 +159,27 @@ const navLinks = document.querySelectorAll(".nav-link");
 const pages = document.querySelectorAll(".page");
 const verifyTabs = document.querySelectorAll(".verify-tab");
 
+function setActivePage(page) {
+    navLinks.forEach(link => {
+        link.classList.toggle("active", link.dataset.page === page);
+    });
+}
+
+function formatShortAddress(address) {
+    if (typeof address !== "string") return String(address ?? "");
+    if (address.length <= 12) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function formatDateLabel(value) {
+    if (value === undefined || value === null) return "Unknown";
+    return new Date(Number(value) * 1000).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -180,6 +201,7 @@ async function init() {
     setupNavigation();
     setupVerifyTabs();
     setupForms();
+    setActivePage("verify");
 
     connectWalletBtn.addEventListener("click", connectWallet);
     document.getElementById("verifyBtn").addEventListener("click", verifyManual);
@@ -331,8 +353,7 @@ function setupNavigation() {
                 navMenu.classList.remove('open');
             }
 
-            navLinks.forEach(l => l.classList.remove("active"));
-            link.classList.add("active");
+            setActivePage(target);
 
             pages.forEach(p => p.classList.add("hidden"));
             document.getElementById(`page-${target}`).classList.remove("hidden");
@@ -418,8 +439,9 @@ function displayResult(result, batchId) {
     section.classList.remove("hidden");
 
     if (result.isAuthentic) {
-        const mfgDate = new Date(Number(result.manufactureDate) * 1000);
-        const expDate = new Date(Number(result.expiryDate) * 1000);
+        const mfgDate = formatDateLabel(result.manufactureDate);
+        const expDate = formatDateLabel(result.expiryDate);
+        const expiryBadge = result.isExpired ? '<span class="expired-badge">⚠️ EXPIRED</span>' : '';
 
         card.className = "result-card authentic";
         card.innerHTML = `
@@ -442,13 +464,13 @@ function displayResult(result, batchId) {
                 </div>
                 <div class="result-detail">
                     <div class="result-detail-label">Manufacture Date</div>
-                    <div class="result-detail-value">${mfgDate.toLocaleDateString()}</div>
+                    <div class="result-detail-value">${mfgDate}</div>
                 </div>
                 <div class="result-detail">
                     <div class="result-detail-label">Expiry Date</div>
                     <div class="result-detail-value">
-                        ${expDate.toLocaleDateString()}
-                        ${result.isExpired ? '<span class="expired-badge">⚠️ EXPIRED</span>' : ''}
+                        ${expDate}
+                        ${expiryBadge}
                     </div>
                 </div>
                 <div class="result-detail">
@@ -778,7 +800,8 @@ async function loadBatches() {
             <div class="batch-item">
                 <div class="batch-info">
                     <h4>💊 ${batch.drugName}</h4>
-                    <p>${id}</p>
+                    <p>${batch.batchNumber}</p>
+                    <span class="batch-meta">ID ${formatShortAddress(id)} · ${batch.manufacturerName}</span>
                 </div>
                 <div class="batch-actions">
                     <button class="btn btn-sm btn-secondary" onclick="generateQR('${id}')">QR</button>
@@ -808,7 +831,8 @@ async function loadBatches() {
                 <div class="batch-item">
                     <div class="batch-info">
                         <h4>💊 ${batch.drugName}</h4>
-                        <p>${batchId.slice(0, 16)}...</p>
+                        <p>${batch.batchNumber}</p>
+                        <span class="batch-meta">ID ${formatShortAddress(batchId)} · ${batch.manufacturerName}</span>
                     </div>
                     <div class="batch-actions">
                         <button class="btn btn-sm btn-secondary" onclick="generateQR('${batchId}')">QR</button>
@@ -881,41 +905,84 @@ async function trackBatch() {
 function renderTimeline(container, batch, chain) {
     const roleNames = ["None", "Manufacturer", "Distributor", "Pharmacy"];
     const roleClasses = ["", "manufacturer", "distributor", "pharmacy"];
+    const expiryLabel = formatDateLabel(batch.expiryDate);
+    const expiryTs = Number(batch.expiryDate) * 1000;
+    const isExpired = typeof batch.isExpired === "boolean" ? batch.isExpired : (expiryTs ? expiryTs < Date.now() : false);
+    const auditRows = chain.map((record) => {
+        const time = new Date(Number(record.timestamp) * 1000);
+        const toRole = roleNames[Number(record.toRole)] || "Unknown";
+        const addr = formatShortAddress(record.to);
+
+        return `
+            <div class="audit-row">
+                <div class="audit-time">${time.toLocaleString()}</div>
+                <div class="audit-dot"></div>
+                <div class="audit-text">
+                    ${toRole} handoff to ${addr} at ${record.location}
+                </div>
+            </div>
+        `;
+    }).join("");
 
     let html = `
-        <div style="margin-bottom: 2rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--radius-md);">
-            <strong>💊 ${batch.drugName}</strong> — Batch: ${batch.batchNumber}<br>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">
-                by ${batch.manufacturerName} · Expires: ${new Date(Number(batch.expiryDate) * 1000).toLocaleDateString()}
-                ${batch.isExpired ? '<span class="expired-badge">⚠️ EXPIRED</span>' : ''}
-            </span>
+        <div class="trace-summary">
+            <div>
+                <span class="kicker">Batch overview</span>
+                <h3>${batch.drugName}</h3>
+                <p>
+                    Batch ${batch.batchNumber} · ${batch.manufacturerName} · Expires ${expiryLabel}
+                    ${isExpired ? '· <span class="expired-badge">EXPIRED</span>' : ''}
+                </p>
+            </div>
+            <div class="trace-summary-metrics">
+                <div class="trace-summary-metric">
+                    <span>Status</span>
+                    <strong>${isExpired ? "Expired" : "Authentic"}</strong>
+                </div>
+                <div class="trace-summary-metric">
+                    <span>Custody hops</span>
+                    <strong>${chain.length}</strong>
+                </div>
+            </div>
         </div>
+        <div class="trace-step-grid">
     `;
 
     chain.forEach((record, i) => {
         const time = new Date(Number(record.timestamp) * 1000);
         const toRole = roleNames[Number(record.toRole)] || "Unknown";
         const toClass = roleClasses[Number(record.toRole)] || "";
-        const addr = record.to;
+        const addr = formatShortAddress(record.to);
+        const icon = toRole === "Manufacturer" ? "M" : toRole === "Distributor" ? "D" : toRole === "Pharmacy" ? "P" : "?";
 
         html += `
-            <div class="timeline-item" style="animation-delay: ${i * 0.15}s">
-                <div class="tl-header">
-                    <span class="tl-role ${toClass}">${toRole}</span>
-                    <span class="tl-time">${time.toLocaleString()}</span>
+            <div class="trace-step" style="animation-delay: ${i * 0.12}s">
+                <div class="trace-step-icon ${toClass}">${icon}</div>
+                <div>
+                    <div class="trace-step-top">
+                        <strong>${toRole}</strong>
+                        <span class="tag">${time.toLocaleString()}</span>
+                    </div>
+                    <div class="trace-step-location">${record.location}</div>
+                    <div class="trace-step-address">${addr}</div>
                 </div>
-                <div class="tl-address">${typeof addr === 'string' ? addr.slice(0, 8) + '...' + addr.slice(-6) : addr}</div>
-                <div class="tl-location">📍 ${record.location}</div>
             </div>
         `;
     });
+
+    html += `
+        </div>
+        <div class="audit-log">
+            <h3>Chain audit log</h3>
+            ${auditRows}
+        </div>
+    `;
 
     container.innerHTML = html;
 }
 
 function trackFromResult(batchId) {
-    navLinks.forEach(l => l.classList.remove("active"));
-    document.querySelector('[data-page="track"]').classList.add("active");
+    setActivePage("track");
     pages.forEach(p => p.classList.add("hidden"));
     document.getElementById("page-track").classList.remove("hidden");
 
