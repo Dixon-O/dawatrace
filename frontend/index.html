@@ -357,8 +357,8 @@
         </div>
 
         <div style="position:absolute;right:120px;top:200px;display:flex;gap:10px;z-index:10">
-          <button type="button" class="btn-soft" style="background:rgba(255,255,255,.2);color:#fff">↧ Download proof</button>
-          <button type="button" class="btn-soft" style="background:rgba(255,255,255,.2);color:#fff">↗ View on explorer</button>
+          <button type="button" class="btn-soft" data-action="download-proof" style="background:rgba(255,255,255,.2);color:#fff">↧ Download proof</button>
+          <button type="button" class="btn-soft" data-action="view-explorer" style="background:rgba(255,255,255,.2);color:#fff">↗ View on explorer</button>
         </div>
 
         <div id="resultSection" style="position:absolute;left:0;top:360px;width:1440px;height:540px;z-index:10">
@@ -442,8 +442,8 @@
           <div class="brand"><div class="brand-logo"></div>DawaTrace</div>
           <div style="display:flex;gap:10px;align-items:center">
             <span class="tag" style="background:#fff">⟡ Live tracking</span>
-            <button type="button" class="btn-soft">↧ Export</button>
-            <button type="button" class="btn-soft">✕ Share</button>
+            <button type="button" class="btn-soft" data-action="export-trace">↧ Export</button>
+            <button type="button" class="btn-soft" data-action="share-trace">✕ Share</button>
           </div>
         </div>
 
@@ -546,7 +546,7 @@
                   Submission will be signed by <b style="color:#0F1B2D">0x4a8c…d2b9</b>
                 </div>
                 <div style="display:flex;gap:12px">
-                  <button type="button" class="btn-ghost" style="padding:10px 20px;font-size:14px">Save Draft</button>
+                  <button type="button" class="btn-ghost" data-action="save-draft" style="padding:10px 20px;font-size:14px">Save Draft</button>
                   <button type="submit" class="btn-grad" style="padding:11px 24px;font-size:14px">Generate QR Code</button>
                 </div>
               </div>
@@ -652,7 +652,7 @@
 
         <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10;flex-wrap:wrap">
           <button type="button" class="btn-soft" onclick="toggleTransferModal(true)">Transfer Custody</button>
-          <button type="button" class="btn-soft">Export CSV</button>
+          <button type="button" class="btn-soft" data-action="export-batches">Export CSV</button>
           <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">+ New Batch</button>
         </div>
 
@@ -680,9 +680,7 @@
         </div>
 
         <div style="position:absolute;left:270px;top:240px;width:1130px;display:flex;align-items:center;gap:10px;z-index:10">
-          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;flex:1;color:#6B7793;font-size:14px">
-            🔍 Search by batch number, product, SKU…
-          </div>
+          <input type="search" id="batchSearch" class="input-field" placeholder="Search by batch number, product, SKU…" style="flex:1;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;color:#3A4761;font-size:14px">
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">All status ▾</div>
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">All products ▾</div>
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">Last 30 days ▾</div>
@@ -740,8 +738,8 @@
         <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">Trust signals across every batch you’ve shipped</div>
         <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10">
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">📅 Last 90 days ▾</div>
-          <button type="button" class="btn-soft">↧ Report</button>
-          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px">◉ Share on-chain</button>
+          <button type="button" class="btn-soft" data-action="report-analytics">↧ Report</button>
+          <button type="button" class="btn-grad" data-action="share-analytics" style="padding:10px 20px;font-size:13px">◉ Share on-chain</button>
         </div>
 
         <div style="position:absolute;left:270px;top:120px;width:1130px;display:flex;gap:18px;z-index:10">
@@ -912,15 +910,13 @@
         <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">Your full catalog · 42 SKUs across 7 categories</div>
 
         <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10">
-          <button type="button" class="btn-soft">↧ Export</button>
-          <button type="button" class="btn-soft">✕ Filter</button>
+          <button type="button" class="btn-soft" data-action="export-products">↧ Export</button>
+          <button type="button" class="btn-soft" data-action="toggle-product-filter">✕ Filter</button>
           <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">+ Add Product</button>
         </div>
 
         <div style="position:absolute;left:270px;top:120px;width:1130px;display:flex;align-items:center;gap:10px;z-index:10">
-          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;flex:1;color:#6B7793;font-size:14px">
-            🔍 Search products by name, SKU or category…
-          </div>
+          <input type="search" id="productSearch" class="input-field" placeholder="Search products by name, SKU or category…" style="flex:1;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;color:#3A4761;font-size:14px">
           <div class="tag" style="background:var(--grad);color:#fff;padding:9px 16px">All · 42</div>
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">💊 Tablets · 18</div>
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">💉 Vials · 9</div>
@@ -929,7 +925,7 @@
           <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">Sort: Newest ▾</div>
         </div>
 
-        <div style="position:absolute;left:270px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="amoxicillin" data-category="antibiotic" style="position:absolute;left:270px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">💊</div>
             <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
@@ -945,12 +941,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">AMX-500-C24</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="amoxicillin">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:558px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="insulin" data-category="vial" style="position:absolute;left:558px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">💉</div>
             <span class="pill pending" style="position:absolute;left:14px;top:14px">◐ Pending</span>
@@ -966,12 +962,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">INS-100-V10</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="insulin">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:846px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="paracetamol" data-category="syrup" style="position:absolute;left:846px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#A8F0DC,#B8E4FF);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">🧴</div>
             <span class="pill verified" style="position:absolute;left:14px;top:14px">● Verified</span>
@@ -987,12 +983,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">PCM-250-S</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="paracetamol">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:1134px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="ibuprofen" data-category="tablet" style="position:absolute;left:1134px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#FFE08A,#FFC9D6);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">💊</div>
             <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
@@ -1008,12 +1004,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">IBU-200-T48</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="ibuprofen">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:270px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="hepb" data-category="vaccine" style="position:absolute;left:270px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#D8C8FF,#FFC9D6);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">💉</div>
             <span class="pill verified" style="position:absolute;left:14px;top:14px">● Verified</span>
@@ -1029,12 +1025,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">HEP-VAC-05</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="hepb">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:558px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="aspirin" data-category="tablet" style="position:absolute;left:558px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#E5E7EB,#F3F4F6);position:relative;display:flex;align-items:center;justify-content:center;filter:grayscale(.4)">
             <div style="font-size:54px;opacity:.7">💊</div>
             <span class="pill expired" style="position:absolute;left:14px;top:14px;filter:none">◌ Expired</span>
@@ -1050,12 +1046,12 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">ASP-075-C30</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="aspirin">Details →</button>
             </div>
           </div>
         </div>
 
-        <div style="position:absolute;left:846px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+        <div class="card product-card" data-product="ors" data-category="sachet" style="position:absolute;left:846px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
           <div style="height:130px;background:linear-gradient(135deg,#FCE7F3,#FFE08A);position:relative;display:flex;align-items:center;justify-content:center">
             <div style="font-size:54px">🧂</div>
             <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
@@ -1071,7 +1067,7 @@
             </div>
             <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
               <span style="font-family:monospace;font-size:11px;color:#6B7793">ORS-44-S10</span>
-              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail" data-product="ors">Details →</button>
             </div>
           </div>
         </div>
@@ -1103,16 +1099,16 @@
           <div class="nav-item"><span class="ic">?</span> Support</div>
         </div>
 
-        <div style="position:absolute;left:270px;top:36px;font-size:13px;color:#6B7793;z-index:10">
+        <div id="productDetailBreadcrumb" style="position:absolute;left:270px;top:36px;font-size:13px;color:#6B7793;z-index:10">
           <span>Products</span> <span style="margin:0 6px;color:#CBD5E1">›</span> <span>Antibiotics</span> <span style="margin:0 6px;color:#CBD5E1">›</span> <span style="color:#0F1B2D;font-weight:600">Amoxicillin 500mg</span>
         </div>
         <div style="position:absolute;right:36px;top:30px;display:flex;align-items:center;gap:10px;z-index:10;flex-wrap:wrap">
-          <button type="button" class="btn-soft">↗ Share</button>
-          <button type="button" class="btn-soft">✎ Edit</button>
-          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">◉ Mint New Batch</button>
+          <button type="button" class="btn-soft" data-action="share-product">↗ Share</button>
+          <button type="button" class="btn-soft" data-action="edit-product">✎ Edit</button>
+          <button type="button" class="btn-grad" data-action="mint-new-batch" style="padding:10px 20px;font-size:13px" data-page="dashboard">◉ Mint New Batch</button>
         </div>
 
-        <div class="card" style="position:absolute;left:270px;top:80px;width:830px;height:240px;padding:0;overflow:hidden;z-index:10">
+        <div id="productHeroCard" class="card" style="position:absolute;left:270px;top:80px;width:830px;height:240px;padding:0;overflow:hidden;z-index:10">
           <div style="display:flex;height:100%">
             <div style="width:240px;height:100%;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);display:flex;align-items:center;justify-content:center;position:relative">
               <div style="font-size:96px">💊</div>
@@ -1133,15 +1129,15 @@
                 <div><div style="font-size:11px;color:#6B7793;font-weight:600">Contract</div><div style="font-family:monospace;font-weight:700;color:#7C3AED;margin-top:2px">0x4a2b…d2b9 ↗</div></div>
               </div>
               <div style="display:flex;gap:10px;margin-top:18px">
-                <button type="button" class="btn-ghost" style="padding:9px 18px;font-size:13px">▦ Generate QR</button>
-                <button type="button" class="btn-soft">📋 Copy SKU</button>
-                <button type="button" class="btn-soft">◉ View on explorer</button>
+                <button type="button" class="btn-ghost" data-action="generate-product-qr" style="padding:9px 18px;font-size:13px">▦ Generate QR</button>
+                <button type="button" class="btn-soft" data-action="copy-sku">📋 Copy SKU</button>
+                <button type="button" class="btn-soft" data-action="view-product-explorer">◉ View on explorer</button>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card" style="position:absolute;left:1120px;top:80px;width:280px;height:240px;padding:22px;z-index:10">
+        <div id="productTrustCard" class="card" style="position:absolute;left:1120px;top:80px;width:280px;height:240px;padding:22px;z-index:10">
           <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D;margin-bottom:14px">◉ On-chain trust</div>
           <div style="display:flex;align-items:center;gap:14px">
             <svg width="80" height="80" viewBox="0 0 100 100">
@@ -1440,8 +1436,8 @@
               <div style="font-size:11px;color:#7C3AED;font-weight:700">↗</div>
             </div>
             <div style="position:absolute;left:18px;right:18px;top:528px;display:flex;gap:8px">
-              <button type="button" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(90deg,#22D3EE,#7C3AED);color:#fff;font-weight:700;font-size:11px;font-family:inherit">↧ Save proof</button>
-              <button type="button" style="flex:1;padding:11px;border:1.5px solid #0F1B2D;border-radius:12px;background:transparent;color:#0F1B2D;font-weight:700;font-size:11px;font-family:inherit">↗ Share</button>
+              <button type="button" data-action="save-proof" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(90deg,#22D3EE,#7C3AED);color:#fff;font-weight:700;font-size:11px;font-family:inherit">↧ Save proof</button>
+              <button type="button" data-action="share-proof" style="flex:1;padding:11px;border:1.5px solid #0F1B2D;border-radius:12px;background:transparent;color:#0F1B2D;font-weight:700;font-size:11px;font-family:inherit">↗ Share</button>
             </div>
             <div class="tabbar">
               <div class="tab"><div class="ic">🏠</div>Home</div>

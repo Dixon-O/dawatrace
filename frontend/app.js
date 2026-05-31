@@ -145,6 +145,128 @@ const DEMO_DB = {
     runtimeBatches: []
 };
 
+const PRODUCT_CATALOG = {
+    amoxicillin: {
+        id: "amoxicillin",
+        name: "Amoxicillin 500mg",
+        categoryKey: "antibiotic",
+        categoryLabel: "Antibiotic",
+        heroEmoji: "💊",
+        subtitle: "Broad-spectrum penicillin · Capsules · 24-count blister",
+        sku: "AMX-500-C24",
+        manufacturer: "MediCore Labs",
+        created: "Sep 12, 2024",
+        contract: "0x4a2b…d2b9",
+        batchPrefix: "AMX-500",
+        defaultExpiryYears: 2,
+        summary: "High-volume antibiotic with strong on-chain visibility.",
+        tags: ["Antibiotic", "Rx-only", "On-chain"],
+        stats: { verifiedScans: "12,418", batches: "14", trustRate: "99.6%", inTransit: "3", regions: "11", counterfeits: "2" }
+    },
+    insulin: {
+        id: "insulin",
+        name: "Insulin Glargine",
+        categoryKey: "vial",
+        categoryLabel: "Injectable",
+        heroEmoji: "💉",
+        subtitle: "100IU · Injectable vials · Cold-chain required",
+        sku: "INS-100-V10",
+        manufacturer: "MediCore Labs",
+        created: "Nov 04, 2024",
+        contract: "0x91fc…0a2b",
+        batchPrefix: "INS-100",
+        defaultExpiryYears: 2,
+        summary: "Temperature-sensitive biologic with batch traceability.",
+        tags: ["Biologic", "Cold-chain", "On-chain"],
+        stats: { verifiedScans: "7,820", batches: "7", trustRate: "98.9%", inTransit: "4", regions: "9", counterfeits: "0" }
+    },
+    paracetamol: {
+        id: "paracetamol",
+        name: "Paracetamol Syrup",
+        categoryKey: "syrup",
+        categoryLabel: "Pediatric Syrup",
+        heroEmoji: "🧴",
+        subtitle: "250ml · Pediatric · Palatable dosing",
+        sku: "PCM-250-S",
+        manufacturer: "MediCore Labs",
+        created: "Oct 21, 2024",
+        contract: "0xb481…2cc7",
+        batchPrefix: "PCM-250",
+        defaultExpiryYears: 2,
+        summary: "Family-friendly OTC format with rapid verification.",
+        tags: ["OTC", "Pediatric", "On-chain"],
+        stats: { verifiedScans: "9,120", batches: "21", trustRate: "99.8%", inTransit: "2", regions: "10", counterfeits: "1" }
+    },
+    ibuprofen: {
+        id: "ibuprofen",
+        name: "Ibuprofen 200mg",
+        categoryKey: "tablet",
+        categoryLabel: "Analgesic",
+        heroEmoji: "💊",
+        subtitle: "Analgesic tablets · 48-count blister",
+        sku: "IBU-200-T48",
+        manufacturer: "MediCore Labs",
+        created: "Dec 08, 2024",
+        contract: "0x7e12…f98b",
+        batchPrefix: "IBU-200",
+        defaultExpiryYears: 2,
+        summary: "Reliable pain relief SKU with strong consumer scan rates.",
+        tags: ["OTC", "Tablet", "On-chain"],
+        stats: { verifiedScans: "5,620", batches: "19", trustRate: "99.2%", inTransit: "1", regions: "8", counterfeits: "0" }
+    },
+    hepb: {
+        id: "hepb",
+        name: "Hep-B Vaccine 0.5ml",
+        categoryKey: "vaccine",
+        categoryLabel: "Vaccine",
+        heroEmoji: "💉",
+        subtitle: "Recombinant · 10-vial pack · Refrigerated",
+        sku: "HEP-VAC-05",
+        manufacturer: "MediCore Labs",
+        created: "Jan 04, 2025",
+        contract: "0xc9d8…2a11",
+        batchPrefix: "HEP-VAC",
+        defaultExpiryYears: 3,
+        summary: "Cold-chain vaccine tracked from factory to clinic.",
+        tags: ["Vaccine", "Cold-chain", "On-chain"],
+        stats: { verifiedScans: "3,240", batches: "5", trustRate: "100%", inTransit: "1", regions: "7", counterfeits: "0" }
+    },
+    aspirin: {
+        id: "aspirin",
+        name: "Aspirin 75mg",
+        categoryKey: "tablet",
+        categoryLabel: "Tablet",
+        heroEmoji: "💊",
+        subtitle: "Anti-platelet · Tablets · Recall monitored",
+        sku: "ASP-075-C30",
+        manufacturer: "MediCore Labs",
+        created: "Aug 15, 2024",
+        contract: "0x3c71…bb02",
+        batchPrefix: "ASP-075",
+        defaultExpiryYears: 2,
+        summary: "Lower-volume cardiology line with tighter expiry windows.",
+        tags: ["OTC", "Tablet", "Recall"],
+        stats: { verifiedScans: "1,120", batches: "3", trustRate: "87.4%", inTransit: "0", regions: "5", counterfeits: "1" }
+    },
+    ors: {
+        id: "ors",
+        name: "ORS Sachets",
+        categoryKey: "sachet",
+        categoryLabel: "Rehydration",
+        heroEmoji: "🧂",
+        subtitle: "Rehydration sachets · 4.4g · 10 packs",
+        sku: "ORS-44-S10",
+        manufacturer: "MediCore Labs",
+        created: "Feb 08, 2025",
+        contract: "0x8f41…1ab4",
+        batchPrefix: "ORS-44",
+        defaultExpiryYears: 2,
+        summary: "Consumer-friendly hydration SKU with strong mobile uptake.",
+        tags: ["OTC", "Sachet", "On-chain"],
+        stats: { verifiedScans: "6,400", batches: "22", trustRate: "99.4%", inTransit: "2", regions: "10", counterfeits: "0" }
+    }
+};
+
 // --- State ---
 let provider = null;
 let signer = null;
@@ -153,7 +275,16 @@ let contractAddress = null;
 let isConnected = false;
 let demoMode = true; // Always start in demo mode
 let selectedProductName = null;
+let selectedProductId = "amoxicillin";
 let lastVerifiedBatchId = null;
+let lastVerificationResult = null;
+let lastVerificationChain = [];
+let lastRenderedBatches = [];
+let productSearchQuery = "";
+let currentProductFilter = "all";
+let batchSearchQuery = "";
+let pendingDashboardPrefill = null;
+let toastTimer = null;
 
 // --- DOM Elements ---
 const connectWalletBtn = document.getElementById("connectWallet");
@@ -192,6 +323,7 @@ function showPage(page) {
     pages.forEach(p => p.classList.add("hidden"));
     target.classList.remove("hidden");
     setActivePage(page);
+    syncPageState(page);
     fitCanvas();
 }
 
@@ -208,6 +340,372 @@ function formatDateLabel(value) {
         day: "numeric",
         year: "numeric",
     });
+}
+
+function getProduct(productId = selectedProductId) {
+    return PRODUCT_CATALOG[productId] || PRODUCT_CATALOG.amoxicillin;
+}
+
+function getProductAccent(product) {
+    const palette = {
+        antibiotic: "linear-gradient(135deg,#FFC9B5,#FFE3D6)",
+        vial: "linear-gradient(135deg,#B8E4FF,#D8C8FF)",
+        syrup: "linear-gradient(135deg,#A8F0DC,#B8E4FF)",
+        tablet: "linear-gradient(135deg,#FFE08A,#FFC9D6)",
+        vaccine: "linear-gradient(135deg,#D8C8FF,#B8E4FF)",
+        sachet: "linear-gradient(135deg,#FCE7F3,#FFE08A)"
+    };
+    return palette[product.categoryKey] || "linear-gradient(135deg,#FFC9B5,#FFE3D6)";
+}
+
+function normalizeQuery(value) {
+    return String(value ?? "").trim().toLowerCase();
+}
+
+async function copyToClipboard(text, successMessage = "Copied to clipboard") {
+    const value = String(text ?? "");
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(value);
+        } else {
+            const input = document.createElement("textarea");
+            input.value = value;
+            input.style.position = "fixed";
+            input.style.opacity = "0";
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand("copy");
+            input.remove();
+        }
+        showToast(successMessage, "success");
+    } catch (err) {
+        console.error("Clipboard error:", err);
+        showToast("Could not copy to clipboard", "error");
+    }
+}
+
+function downloadText(filename, text, mimeType = "text/plain") {
+    const blob = new Blob([text], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function downloadJson(filename, data) {
+    downloadText(filename, JSON.stringify(sanitizeForJson(data), null, 2), "application/json");
+}
+
+function sanitizeForJson(value) {
+    if (typeof value === "bigint") {
+        return value.toString();
+    }
+    if (Array.isArray(value)) {
+        return value.map(sanitizeForJson);
+    }
+    if (value && typeof value === "object") {
+        const output = {};
+        for (const [key, entry] of Object.entries(value)) {
+            output[key] = sanitizeForJson(entry);
+        }
+        return output;
+    }
+    return value;
+}
+
+async function shareText(title, text) {
+    try {
+        if (navigator.share) {
+            await navigator.share({ title, text });
+            return true;
+        }
+        await copyToClipboard(`${title}\n${text}`, "Share text copied");
+        return false;
+    } catch (err) {
+        console.error("Share error:", err);
+        showToast("Unable to share right now", "error");
+        return false;
+    }
+}
+
+function buildBatchIdFromProduct(product) {
+    const shortCode = product.batchPrefix || product.sku.replace(/[^A-Z0-9]/gi, "").slice(0, 8);
+    const suffix = String(Date.now()).slice(-6);
+    return `DWT-${shortCode}-${suffix}`;
+}
+
+function buildExpiryDate(years = 2) {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + years);
+    return date.toISOString().slice(0, 10);
+}
+
+function prefillRegisterForm(productId = selectedProductId) {
+    const product = getProduct(productId);
+    selectedProductId = product.id;
+    selectedProductName = product.name;
+    const drugName = document.getElementById("drugName");
+    const batchNumber = document.getElementById("batchNumber");
+    const expiryDate = document.getElementById("expiryDate");
+    const ipfsHash = document.getElementById("ipfsHash");
+
+    if (!drugName || !batchNumber || !expiryDate || !ipfsHash) return;
+
+    drugName.value = product.name;
+    batchNumber.value = buildBatchIdFromProduct(product);
+    expiryDate.value = buildExpiryDate(product.defaultExpiryYears || 2);
+    ipfsHash.value = "";
+}
+
+function saveRegisterDraft() {
+    const form = document.getElementById("registerForm");
+    if (!form) return;
+
+    try {
+        const draft = {
+            drugName: document.getElementById("drugName")?.value || "",
+            batchNumber: document.getElementById("batchNumber")?.value || "",
+            expiryDate: document.getElementById("expiryDate")?.value || "",
+            ipfsHash: document.getElementById("ipfsHash")?.value || "",
+            productId: selectedProductId,
+            savedAt: new Date().toISOString()
+        };
+
+        localStorage.setItem("dawatrace.registerDraft", JSON.stringify(draft));
+        showToast("Draft saved locally", "success");
+    } catch (err) {
+        console.error("Draft save failed:", err);
+        showToast("Could not save draft locally", "error");
+    }
+}
+
+function restoreRegisterDraft() {
+    const form = document.getElementById("registerForm");
+    if (!form) return;
+
+    if (pendingDashboardPrefill) {
+        prefillRegisterForm(pendingDashboardPrefill);
+        pendingDashboardPrefill = null;
+        return;
+    }
+
+    try {
+        const raw = localStorage.getItem("dawatrace.registerDraft");
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (draft.productId && PRODUCT_CATALOG[draft.productId]) {
+            selectedProductId = draft.productId;
+            selectedProductName = getProduct(draft.productId).name;
+        }
+        if (document.getElementById("drugName")) document.getElementById("drugName").value = draft.drugName || "";
+        if (document.getElementById("batchNumber")) document.getElementById("batchNumber").value = draft.batchNumber || "";
+        if (document.getElementById("expiryDate")) document.getElementById("expiryDate").value = draft.expiryDate || "";
+        if (document.getElementById("ipfsHash")) document.getElementById("ipfsHash").value = draft.ipfsHash || "";
+    } catch (err) {
+        console.warn("Draft restore failed:", err);
+    }
+}
+
+function clearRegisterDraft() {
+    try {
+        localStorage.removeItem("dawatrace.registerDraft");
+    } catch (err) {
+        console.warn("Draft clear failed:", err);
+    }
+}
+
+function renderProductDetail(productId = selectedProductId) {
+    const product = getProduct(productId);
+    selectedProductId = product.id;
+    selectedProductName = product.name;
+
+    const breadcrumb = document.getElementById("productDetailBreadcrumb");
+    if (breadcrumb) {
+        breadcrumb.innerHTML = `
+            <span>Products</span>
+            <span style="margin:0 6px;color:#CBD5E1">›</span>
+            <span>${product.categoryLabel}</span>
+            <span style="margin:0 6px;color:#CBD5E1">›</span>
+            <span style="color:#0F1B2D;font-weight:600">${product.name}</span>
+        `;
+    }
+
+    const heroCard = document.getElementById("productHeroCard");
+    if (heroCard) {
+        const tags = product.tags.map(tag => {
+            const palette = tag === "Rx-only" ? "background:#FEE2E2;color:#EF4444" : tag === "On-chain" ? "background:#E9F7F2;color:#10B981" : "background:#EDE7FF;color:#7C3AED";
+            return `<span class="tag" style="${palette}">${tag}</span>`;
+        }).join("");
+
+        heroCard.innerHTML = `
+          <div style="display:flex;height:100%">
+            <div style="width:240px;height:100%;background:${getProductAccent(product)};display:flex;align-items:center;justify-content:center;position:relative">
+              <div style="font-size:96px">${product.heroEmoji}</div>
+              <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
+            </div>
+            <div style="flex:1;padding:24px 28px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${tags}</div>
+              <h2 style="margin:6px 0 4px 0;font-family:'Sora',sans-serif;font-size:28px;line-height:1.1;color:#0F1B2D">${product.name}</h2>
+              <div style="font-size:13px;color:#6B7793">${product.subtitle}</div>
+              <div style="display:flex;gap:32px;margin-top:18px">
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">SKU</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">${product.sku}</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Manufacturer</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.manufacturer}</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Created</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.created}</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Contract</div><div style="font-family:monospace;font-weight:700;color:#7C3AED;margin-top:2px">${product.contract} ↗</div></div>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:18px">
+                <button type="button" class="btn-ghost" data-action="generate-product-qr" style="padding:9px 18px;font-size:13px">▦ Generate QR</button>
+                <button type="button" class="btn-soft" data-action="copy-sku">📋 Copy SKU</button>
+                <button type="button" class="btn-soft" data-action="view-product-explorer">◉ View on explorer</button>
+              </div>
+            </div>
+          </div>
+        `;
+    }
+
+    const trustCard = document.getElementById("productTrustCard");
+    if (trustCard) {
+        trustCard.innerHTML = `
+          <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D;margin-bottom:14px">◉ On-chain trust</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <svg width="80" height="80" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="#EDE9FE" stroke-width="12" fill="none"></circle>
+              <circle cx="50" cy="50" r="42" stroke="url(#tg)" stroke-width="12" fill="none" stroke-dasharray="263 264" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+              <defs><linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"></stop><stop offset="1" stop-color="#7C3AED"></stop></linearGradient></defs>
+              <text x="50" y="55" text-anchor="middle" font-family="Sora" font-size="16" font-weight="700" fill="#0F1B2D">${product.stats.trustRate}</text>
+            </svg>
+            <div>
+              <div style="font-family:'Sora',sans-serif;font-size:24px;font-weight:800;color:#0F1B2D;line-height:1">${product.stats.verifiedScans}</div>
+              <div style="font-size:11px;color:#6B7793;margin-top:2px">verified scans</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:18px;font-size:12px">
+            <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700">${product.stats.batches}</div></div>
+            <div><div style="color:#6B7793">In transit</div><div style="color:#7C3AED;font-weight:700">${product.stats.inTransit}</div></div>
+            <div><div style="color:#6B7793">Regions</div><div style="color:#0F1B2D;font-weight:700">${product.stats.regions}</div></div>
+            <div><div style="color:#6B7793">Counterfeits</div><div style="color:#EF4444;font-weight:700">${product.stats.counterfeits}</div></div>
+          </div>
+        `;
+    }
+}
+
+function applyProductSearchFilter() {
+    const query = normalizeQuery(productSearchQuery);
+    const cards = document.querySelectorAll("#page-products .product-card[data-product]");
+
+    cards.forEach(card => {
+        const product = getProduct(card.dataset.product);
+        const haystack = normalizeQuery([
+            product.name,
+            product.sku,
+            product.categoryLabel,
+            product.summary,
+            card.textContent
+        ].join(" "));
+        const matchesQuery = !query || haystack.includes(query);
+        const matchesFilter = currentProductFilter === "all" || card.dataset.category === currentProductFilter;
+        card.style.display = matchesQuery && matchesFilter ? "" : "none";
+    });
+}
+
+function applyBatchSearchFilter() {
+    const query = normalizeQuery(batchSearchQuery);
+    const list = document.getElementById("batchList");
+    if (!list) return;
+
+    const rows = list.querySelectorAll("[data-batch-id]");
+    rows.forEach(row => {
+        const haystack = normalizeQuery(row.textContent);
+        row.style.display = !query || haystack.includes(query) ? "" : "none";
+    });
+
+    const visibleCount = Array.from(rows).filter(row => row.style.display !== "none").length;
+    const emptyState = list.querySelector(".batch-empty-state");
+    if (emptyState) {
+        emptyState.style.display = visibleCount ? "none" : "flex";
+    }
+}
+
+function syncPageState(page) {
+    switch (page) {
+        case "dashboard":
+            restoreRegisterDraft();
+            loadStats();
+            loadBatches();
+            break;
+        case "products":
+            applyProductSearchFilter();
+            break;
+        case "product-detail":
+            renderProductDetail(selectedProductId);
+            break;
+        case "batches":
+            applyBatchSearchFilter();
+            break;
+        case "track":
+            if (lastVerifiedBatchId) {
+                const input = document.getElementById("trackBatchId");
+                if (input && !input.value.trim()) {
+                    input.value = lastVerifiedBatchId;
+                }
+            }
+            break;
+        case "analytics":
+            break;
+        case "result":
+            if (lastVerifiedBatchId) {
+                // keep the current result visible when returning to this page
+            }
+            break;
+        case "mobile":
+            break;
+        default:
+            break;
+    }
+}
+
+function getVerificationSummary() {
+    const result = lastVerificationResult || { isAuthentic: false };
+    return {
+        batchId: lastVerifiedBatchId,
+        result,
+        chain: lastVerificationChain,
+        generatedAt: new Date().toISOString(),
+        contractAddress,
+        mode: demoMode ? "demo" : "live"
+    };
+}
+
+function openExplorerFor(reference) {
+    const target = String(reference || "").trim();
+    if (!target) {
+        showToast("No explorer reference available", "error");
+        return;
+    }
+
+    let url = `https://polygonscan.com/search?f=0&q=${encodeURIComponent(target)}`;
+    if (/^0x[a-fA-F0-9]{40}$/.test(target)) {
+        url = `https://polygonscan.com/address/${target}`;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function exportRowsToCsv(filename, rows) {
+    if (!rows.length) {
+        showToast("Nothing to export yet", "error");
+        return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    const csv = [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => JSON.stringify(row[h] ?? "")).join(","))
+    ].join("\n");
+    downloadText(filename, csv, "text/csv");
 }
 
 // ============================================================
@@ -231,6 +729,8 @@ async function init() {
     setupNavigation();
     setupVerifyTabs();
     setupForms();
+    setupActionButtons();
+    setupSearchInputs();
     window.addEventListener("resize", fitCanvas);
     fitCanvas();
     showPage("landing");
@@ -379,6 +879,13 @@ function setupNavigation() {
             e.preventDefault();
             const target = link.dataset.page;
 
+            if (link.dataset.action === "mint-new-batch" && target === "dashboard") {
+                pendingDashboardPrefill = selectedProductId;
+            }
+            if (target === "product-detail" && link.dataset.product) {
+                selectedProductId = link.dataset.product;
+            }
+
             // Close mobile menu if open
             const navMenu = document.querySelector('.nav-links');
             if (navMenu && navMenu.classList.contains('open')) {
@@ -400,6 +907,234 @@ function setupVerifyTabs() {
             document.getElementById(`tab-${tab.dataset.tab}`).classList.remove("hidden");
         });
     });
+}
+
+function setupActionButtons() {
+    document.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        if (button.type === "submit") return;
+
+        const action = button.dataset.action;
+        switch (action) {
+            case "save-draft":
+                saveRegisterDraft();
+                break;
+            case "download-proof":
+            case "save-proof":
+                downloadProof();
+                break;
+            case "view-explorer":
+                openExplorerFor(lastVerifiedBatchId || contractAddress);
+                break;
+            case "export-trace":
+                exportTrace();
+                break;
+            case "share-trace":
+                shareTrace();
+                break;
+            case "export-products":
+                exportProducts();
+                break;
+            case "toggle-product-filter":
+                toggleProductFilter();
+                break;
+            case "export-batches":
+                exportBatches();
+                break;
+            case "report-analytics":
+                exportAnalyticsReport();
+                break;
+            case "share-analytics":
+                shareAnalytics();
+                break;
+            case "share-product":
+                shareProduct();
+                break;
+            case "edit-product":
+                pendingDashboardPrefill = selectedProductId;
+                showPage("dashboard");
+                showToast(`Editing ${getProduct().name}`, "success");
+                break;
+            case "mint-new-batch":
+                pendingDashboardPrefill = selectedProductId;
+                if (button.dataset.page !== "dashboard") {
+                    showPage("dashboard");
+                }
+                showToast(`Ready to mint a new ${getProduct().name} batch`, "success");
+                break;
+            case "generate-product-qr":
+                generateQR(getProduct().sku);
+                break;
+            case "copy-sku":
+                copyToClipboard(getProduct().sku, "SKU copied!");
+                break;
+            case "view-product-explorer":
+                openExplorerFor(`${getProduct().name} ${getProduct().sku}`);
+                break;
+            case "share-proof":
+                shareProof();
+                break;
+            default:
+                break;
+        }
+    });
+}
+
+function setupSearchInputs() {
+    const productSearch = document.getElementById("productSearch");
+    if (productSearch) {
+        productSearch.addEventListener("input", () => {
+            productSearchQuery = productSearch.value;
+            applyProductSearchFilter();
+        });
+    }
+
+    const batchSearch = document.getElementById("batchSearch");
+    if (batchSearch) {
+        batchSearch.addEventListener("input", () => {
+            batchSearchQuery = batchSearch.value;
+            applyBatchSearchFilter();
+        });
+    }
+}
+
+function toggleProductFilter() {
+    const filters = ["all", "antibiotic", "tablet", "vial", "syrup", "vaccine", "sachet"];
+    const currentIndex = filters.indexOf(currentProductFilter);
+    currentProductFilter = filters[(currentIndex + 1) % filters.length] || "all";
+    applyProductSearchFilter();
+
+    const labelMap = {
+        all: "All products",
+        antibiotic: "Antibiotics",
+        tablet: "Tablets",
+        vial: "Vials",
+        syrup: "Syrups",
+        vaccine: "Vaccines",
+        sachet: "Sachets"
+    };
+    showToast(`Filter applied: ${labelMap[currentProductFilter] || "All products"}`, "success");
+}
+
+function downloadProof() {
+    if (!lastVerifiedBatchId) {
+        showToast("Verify a batch first to generate proof", "error");
+        return;
+    }
+
+    const proof = getVerificationSummary();
+    downloadJson(`dawatrace-proof-${lastVerifiedBatchId}.json`, proof);
+    showToast("Verification proof downloaded", "success");
+}
+
+function shareProof() {
+    if (!lastVerifiedBatchId) {
+        showToast("Verify a batch first to share proof", "error");
+        return;
+    }
+
+    const proof = getVerificationSummary();
+    const text = `DawaTrace proof for ${proof.batchId}: ${proof.result.isAuthentic ? "authentic" : "not verified"} (${proof.mode})`;
+    shareText("DawaTrace Proof", text);
+}
+
+function exportTrace() {
+    const batchId = document.getElementById("trackBatchId")?.value?.trim() || lastVerifiedBatchId;
+    if (!batchId) {
+        showToast("Enter or verify a batch before exporting trace", "error");
+        return;
+    }
+
+    const batch = demoMode ? DEMO_DB.batches[batchId] || DEMO_DB.runtimeBatches.find(b => b.id === batchId) : null;
+    const chain = demoMode ? DEMO_DB.custodyChains[batchId] || [] : lastVerificationChain;
+    const payload = {
+        batchId,
+        product: batch ? batch.drugName : selectedProductName || "Unknown",
+        generatedAt: new Date().toISOString(),
+        chain,
+        mode: demoMode ? "demo" : "live"
+    };
+
+    downloadJson(`dawatrace-trace-${batchId}.json`, payload);
+    showToast("Trace exported", "success");
+}
+
+function shareTrace() {
+    const batchId = document.getElementById("trackBatchId")?.value?.trim() || lastVerifiedBatchId;
+    if (!batchId) {
+        showToast("Enter a batch before sharing trace", "error");
+        return;
+    }
+
+    const text = `DawaTrace trace for ${batchId}${selectedProductName ? ` · ${selectedProductName}` : ""}`;
+    shareText("DawaTrace Trace", text);
+}
+
+function exportProducts() {
+    const cards = Array.from(document.querySelectorAll("#page-products .product-card[data-product]"))
+        .filter(card => card.style.display !== "none");
+
+    const rows = cards.map(card => {
+        const product = getProduct(card.dataset.product);
+        return {
+            name: product.name,
+            sku: product.sku,
+            category: product.categoryLabel,
+            manufacturer: product.manufacturer,
+            contract: product.contract,
+            trustRate: product.stats.trustRate
+        };
+    });
+
+    exportRowsToCsv("dawatrace-products.csv", rows);
+    showToast("Products exported", "success");
+}
+
+function exportBatches() {
+    const query = normalizeQuery(batchSearchQuery);
+    const rows = lastRenderedBatches
+        .filter(row => {
+            const haystack = normalizeQuery([row.batchNumber, row.drugName, row.manufacturerName, row.route].join(" "));
+            return !query || haystack.includes(query);
+        })
+        .map(row => ({
+            batchNumber: row.batchNumber,
+            product: row.drugName,
+            manufacturer: row.manufacturerName,
+            status: row.isExpired ? "Expired" : row.isAuthentic ? "Active" : "Pending",
+            expiry: formatDateLabel(row.expiryDate),
+            route: row.route
+        }));
+
+    exportRowsToCsv("dawatrace-batches.csv", rows);
+    showToast("Batch list exported", "success");
+}
+
+function exportAnalyticsReport() {
+    const report = {
+        generatedAt: new Date().toISOString(),
+        verifications: 48217,
+        authenticRate: "99.4%",
+        counterfeitsBlocked: 312,
+        avgTraceTime: "1.8s",
+        activeRegions: 7,
+        mode: demoMode ? "demo" : "live"
+    };
+
+    downloadJson("dawatrace-analytics-report.json", report);
+    showToast("Analytics report downloaded", "success");
+}
+
+function shareAnalytics() {
+    const text = "DawaTrace analytics: 48,217 verifications, 99.4% authentic rate, 312 counterfeits blocked.";
+    shareText("DawaTrace Analytics", text);
+}
+
+function shareProduct() {
+    const product = getProduct();
+    const text = `${product.name} (${product.sku}) · ${product.summary}`;
+    shareText(product.name, text);
 }
 
 // ============================================================
@@ -478,6 +1213,11 @@ function displayResult(result, batchId, chain = []) {
     }
 
     lastVerifiedBatchId = batchId;
+    lastVerificationResult = result;
+    lastVerificationChain = Array.isArray(chain) ? chain : [];
+    if (result && result.drugName) {
+        selectedProductName = result.drugName;
+    }
     const txLabel = formatShortAddress(batchId);
     const isAuthentic = !!result.isAuthentic;
 
@@ -566,9 +1306,9 @@ function displayResult(result, batchId, chain = []) {
     }
 
     if (journey) {
-        if (isAuthentic && chain.length) {
+        if (isAuthentic && lastVerificationChain.length) {
             const roleNames = ["None", "Manufacturer", "Distributor", "Pharmacy"];
-            journey.innerHTML = chain.slice(0, 5).map((record, index) => {
+            journey.innerHTML = lastVerificationChain.slice(0, 5).map((record, index) => {
                 const stepName = roleNames[Number(record.toRole)] || "Trace";
                 const time = new Date(Number(record.timestamp) * 1000).toLocaleDateString(undefined, {
                     month: "short",
@@ -779,6 +1519,7 @@ function setupForms() {
 
             showToast(`✅ Batch registered! ID: ${batchId}`, "success");
             e.target.reset();
+            clearRegisterDraft();
             loadBatches();
             generateQR(batchId);
         } else {
@@ -802,6 +1543,7 @@ function setupForms() {
 
                 showToast(`✅ Batch registered! ID: ${batchId.slice(0, 10)}...`, "success");
                 e.target.reset();
+                clearRegisterDraft();
                 loadBatches();
                 generateQR(batchId);
             } catch (err) {
@@ -930,6 +1672,7 @@ async function loadBatches() {
     }
 
     const sorted = rows.sort((a, b) => Number(b.manufactureDate || 0) - Number(a.manufactureDate || 0));
+    lastRenderedBatches = sorted.map(row => ({ ...row }));
 
     const renderStatusPill = (row) => {
         if (row.isExpired) return `<span class="pill expired">Expired</span>`;
@@ -949,7 +1692,7 @@ async function loadBatches() {
                             <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.drugName}</div>
                         </div>
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
                 </div>
             `).join("");
         }
@@ -962,7 +1705,7 @@ async function loadBatches() {
         }
 
         list.innerHTML = sorted.map(row => `
-            <div style="display:grid;grid-template-columns:160px 1.4fr 1fr 130px 130px 1fr 200px;gap:0;padding:14px 26px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:14px;background:${row.isExpired ? '#FCFCFE' : '#fff'}">
+            <div class="batch-item" data-batch-id="${String(row.id)}" style="display:grid;grid-template-columns:160px 1.4fr 1fr 130px 130px 1fr 200px;gap:0;padding:14px 26px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:14px;background:${row.isExpired ? '#FCFCFE' : '#fff'}">
                 <div style="font-family:monospace;font-weight:700;color:var(--ink)">${row.batchNumber || formatShortAddress(row.id)}</div>
                 <div style="display:flex;align-items:center;gap:10px;min-width:0">
                     <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);display:flex;align-items:center;justify-content:center;flex-shrink:0">💊</div>
@@ -976,17 +1719,23 @@ async function loadBatches() {
                 <div style="color:${row.isExpired ? '#EF4444' : 'var(--ink)'};font-weight:600">${formatDateLabel(row.expiryDate)}</div>
                 <div style="color:var(--ink-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.route}</div>
                 <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
-                    <button class="btn btn-sm btn-secondary" onclick="copyBatchId('${row.id}')">Copy</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="copyBatchId('${row.id}')">Copy</button>
                 </div>
             </div>
-        `).join("");
+        `).join("") + `
+            <div class="batch-empty-state empty-state" style="display:none">No matching batches found</div>
+        `;
+        applyBatchSearchFilter();
     }
 }
 
 function copyBatchId(id) {
-    navigator.clipboard.writeText(id);
-    showToast("📋 Batch ID copied!", "success");
+    if (!id) {
+        showToast("No batch ID available", "error");
+        return;
+    }
+    copyToClipboard(id, "Batch ID copied!");
 }
 
 // ============================================================
@@ -1017,6 +1766,19 @@ async function trackBatch() {
             return;
         }
 
+        lastVerifiedBatchId = batchId;
+        lastVerificationResult = {
+            isAuthentic: true,
+            drugName: batch.drugName,
+            batchNumber: batch.batchNumber,
+            manufacturerName: batch.manufacturerName,
+            manufactureDate: batch.manufactureDate,
+            expiryDate: batch.expiryDate,
+            isExpired: !!batch.isExpired,
+            custodyCount: chain.length
+        };
+        lastVerificationChain = chain;
+        selectedProductName = batch.drugName || selectedProductName;
         renderTimeline(timeline, batch, chain);
         return;
     }
@@ -1031,6 +1793,19 @@ async function trackBatch() {
             return;
         }
 
+        lastVerifiedBatchId = batchId;
+        lastVerificationResult = {
+            isAuthentic: true,
+            drugName: batch.drugName,
+            batchNumber: batch.batchNumber,
+            manufacturerName: batch.manufacturerName,
+            manufactureDate: batch.manufactureDate,
+            expiryDate: batch.expiryDate,
+            isExpired: !!batch.isExpired,
+            custodyCount: chain.length
+        };
+        lastVerificationChain = chain;
+        selectedProductName = batch.drugName || selectedProductName;
         renderTimeline(timeline, batch, chain);
     } catch (err) {
         console.error("Track error:", err);
@@ -1185,11 +1960,16 @@ function showToast(message, type = "success") {
     const toast = document.getElementById("toast");
     const msg = document.getElementById("toastMessage");
 
+    if (toastTimer) {
+        clearTimeout(toastTimer);
+        toastTimer = null;
+    }
     msg.textContent = message;
     toast.className = `toast ${type}`;
 
-    setTimeout(() => {
+    toastTimer = setTimeout(() => {
         toast.classList.add("hidden");
+        toastTimer = null;
     }, 4000);
 }
 
