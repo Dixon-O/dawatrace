@@ -35,17 +35,19 @@ DawaTrace gives every medicine a verifiable digital identity on the blockchain:
 
 ```bash
 git clone <repo-url>
-cd pharmachain
+cd dawatrace
 npm install
 ```
 
-### Run Demo (No Blockchain — Instant)
+### Run Demo (No Blockchain - Instant)
 
 ```bash
-npx -y http-server frontend -p 3000
+npm start
 ```
 
-Open `http://localhost:3000` → App starts in **Demo Mode** automatically with pre-loaded data.
+Open `http://localhost:3000` → the server redirects into the frontend shell and the app starts in **Demo Mode** automatically with pre-loaded data.
+
+If you prefer to open the static file directly, `frontend/index.html` still works in a browser and will also fall back to demo mode.
 
 ### Run with Local Blockchain (Full Stack)
 
@@ -56,8 +58,8 @@ npx hardhat node
 # Terminal 2 — Deploy contract + seed data
 npx hardhat run scripts/deploy.js --network localhost
 
-# Terminal 3 — Serve frontend
-npx -y http-server frontend -p 3000
+# Terminal 3 — Serve frontend locally
+npm start
 ```
 
 Open `http://localhost:3000` → Connect MetaMask to `localhost:8545` (Chain ID: `31337`).

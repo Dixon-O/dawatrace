@@ -285,6 +285,7 @@ let currentProductFilter = "all";
 let batchSearchQuery = "";
 let pendingDashboardPrefill = null;
 let toastTimer = null;
+let currentInfoSection = "features";
 
 // --- DOM Elements ---
 const connectWalletBtn = document.getElementById("connectWallet");
@@ -324,6 +325,9 @@ function showPage(page) {
     target.classList.remove("hidden");
     setActivePage(page);
     syncPageState(page);
+    if (page === "product-detail" && typeof renderProductDetailPage === "function") {
+        renderProductDetailPage();
+    }
     fitCanvas();
 }
 
@@ -356,6 +360,285 @@ function getProductAccent(product) {
         sachet: "linear-gradient(135deg,#FCE7F3,#FFE08A)"
     };
     return palette[product.categoryKey] || "linear-gradient(135deg,#FFC9B5,#FFE3D6)";
+}
+
+function parseDisplayNumber(value) {
+    const numeric = Number(String(value ?? "").replace(/,/g, ""));
+    return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getProductBatchMatches(product, limit = 3) {
+    const sources = [
+        ...Object.entries(DEMO_DB.batches).map(([id, batch]) => ({ id, ...batch })),
+        ...DEMO_DB.runtimeBatches.map(batch => ({ id: batch.id, ...batch }))
+    ];
+    const searchTerms = normalizeQuery(product.name)
+        .split(/\s+/)
+        .filter(term => term.length > 2);
+    const prefix = normalizeQuery(product.batchPrefix || product.sku || "");
+    const manufacturer = normalizeQuery(product.manufacturer || "");
+
+    return sources
+        .filter(batch => {
+            const haystack = normalizeQuery([
+                batch.drugName,
+                batch.batchNumber,
+                batch.manufacturerName,
+                batch.id
+            ].join(" "));
+
+            return searchTerms.some(term => haystack.includes(term)) ||
+                (prefix && haystack.includes(prefix)) ||
+                (manufacturer && haystack.includes(manufacturer));
+        })
+        .slice(0, limit);
+}
+
+function getRelatedProductBatchId(product) {
+    return getProductBatchMatches(product, 1)[0]?.id || null;
+}
+
+function renderProductDetailPage() {
+    const product = getProduct();
+    const accent = getProductAccent(product);
+    const trustRate = parseFloat(String(product.stats?.trustRate ?? "0").replace("%", "")) || 0;
+    const verifiedScans = parseDisplayNumber(product.stats?.verifiedScans);
+    const batchCount = parseDisplayNumber(product.stats?.batches);
+    const counterfeits = parseDisplayNumber(product.stats?.counterfeits);
+    const regions = parseDisplayNumber(product.stats?.regions);
+    const statusClass = trustRate >= 95 ? "active" : trustRate >= 90 ? "verified" : "pending";
+    const statusLabel = trustRate >= 95 ? "● Active" : trustRate >= 90 ? "● Verified" : "◐ Monitoring";
+    const batches = getProductBatchMatches(product, 3);
+    const trustStroke = Math.max(1, Math.round((trustRate / 100) * 264));
+    const packageLabel = String(product.subtitle || "").split("·").pop()?.trim() || product.subtitle || product.categoryLabel;
+
+    const breadcrumb = document.getElementById("productDetailBreadcrumb");
+    if (breadcrumb) {
+        breadcrumb.innerHTML = `
+            <span>Products</span>
+            <span style="margin:0 6px;color:#CBD5E1">›</span>
+            <span>${product.categoryLabel}</span>
+            <span style="margin:0 6px;color:#CBD5E1">›</span>
+            <span style="color:#0F1B2D;font-weight:600">${product.name}</span>
+        `;
+    }
+
+    const hero = document.getElementById("productHeroCard");
+    if (hero) {
+        const primaryTag = product.tags?.find(tag => /rx-only|otc|cold-chain|vaccine|recall/i.test(tag)) || product.tags?.[0] || product.categoryLabel;
+        hero.innerHTML = `
+            <div style="display:flex;height:100%">
+              <div style="width:240px;height:100%;background:${accent};display:flex;align-items:center;justify-content:center;position:relative">
+                <div style="font-size:96px">${product.heroEmoji || "💊"}</div>
+                <span class="pill ${statusClass}" style="position:absolute;left:14px;top:14px">${statusLabel}</span>
+              </div>
+              <div style="flex:1;padding:24px 28px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+                  <span class="tag" style="background:#EDE7FF;color:#7C3AED">${product.categoryLabel}</span>
+                  <span class="tag" style="background:#FEE2E2;color:#EF4444">${primaryTag}</span>
+                  <span class="tag" style="background:#E9F7F2;color:#10B981">✓ On-chain</span>
+                </div>
+                <h2 style="margin:6px 0 4px 0;font-family:'Sora',sans-serif;font-size:28px;line-height:1.1;color:#0F1B2D">${product.name}</h2>
+                <div style="font-size:13px;color:#6B7793">${product.subtitle}</div>
+                <div style="display:flex;gap:32px;margin-top:18px;flex-wrap:wrap">
+                  <div><div style="font-size:11px;color:#6B7793;font-weight:600">SKU</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">${product.sku}</div></div>
+                  <div><div style="font-size:11px;color:#6B7793;font-weight:600">Manufacturer</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.manufacturer}</div></div>
+                  <div><div style="font-size:11px;color:#6B7793;font-weight:600">Created</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.created}</div></div>
+                  <div><div style="font-size:11px;color:#6B7793;font-weight:600">Contract</div><div style="font-family:monospace;font-weight:700;color:#7C3AED;margin-top:2px">${product.contract} ↗</div></div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+                  <button type="button" class="btn-ghost" data-action="product-qr" style="padding:9px 18px;font-size:13px">▦ Generate QR</button>
+                  <button type="button" class="btn-soft" data-action="copy-sku">📋 Copy SKU</button>
+                  <button type="button" class="btn-soft" data-action="view-product-explorer">◉ View on explorer</button>
+                </div>
+              </div>
+            </div>
+        `;
+    }
+
+    const trust = document.getElementById("productTrustCard");
+    if (trust) {
+        trust.innerHTML = `
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D;margin-bottom:14px">◉ On-chain trust</div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <svg width="80" height="80" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" stroke="#EDE9FE" stroke-width="12" fill="none"></circle>
+                <circle cx="50" cy="50" r="42" stroke="url(#tg)" stroke-width="12" fill="none" stroke-dasharray="${trustStroke} 264" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+                <defs><linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"></stop><stop offset="1" stop-color="#7C3AED"></stop></linearGradient></defs>
+                <text x="50" y="55" text-anchor="middle" font-family="Sora" font-size="16" font-weight="700" fill="#0F1B2D">${trustRate.toFixed(1).replace(/\.0$/, "")}%</text>
+              </svg>
+              <div>
+                <div style="font-family:'Sora',sans-serif;font-size:24px;font-weight:800;color:#0F1B2D;line-height:1">${verifiedScans.toLocaleString()}</div>
+                <div style="font-size:11px;color:#6B7793;margin-top:2px">verified scans</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:18px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700">${batchCount.toLocaleString()}</div></div>
+              <div><div style="color:#6B7793">In transit</div><div style="color:#7C3AED;font-weight:700">${Math.max(0, Math.min(batchCount, Math.round(batchCount / 4) || 0))}</div></div>
+              <div><div style="color:#6B7793">Regions</div><div style="color:#0F1B2D;font-weight:700">${regions.toLocaleString()}</div></div>
+              <div><div style="color:#6B7793">Counterfeits</div><div style="color:#EF4444;font-weight:700">${counterfeits.toLocaleString()}</div></div>
+            </div>
+        `;
+    }
+
+    const spec = document.getElementById("productSpecCard");
+    if (spec) {
+        spec.innerHTML = `
+            <h3 style="margin:0 0 14px 0;font-family:'Sora',sans-serif;font-size:16px;color:#0F1B2D">Product specification</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;font-size:13px">
+              <div><div style="color:#6B7793;font-size:11px">Category</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.categoryLabel}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Manufacturer</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.manufacturer}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">SKU</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">${product.sku}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Contract</div><div style="font-family:monospace;font-weight:700;color:#7C3AED;margin-top:2px">${product.contract}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Created</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${product.created}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Batch prefix</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">${product.batchPrefix}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Trust rate</div><div style="font-weight:700;color:#10B981;margin-top:2px">${product.stats?.trustRate || "0%"}</div></div>
+              <div><div style="color:#6B7793;font-size:11px">Coverage</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">${regions.toLocaleString()} regions</div></div>
+            </div>
+        `;
+    }
+
+    const scans = document.getElementById("productScansCard");
+    if (scans) {
+        const swing = Math.max(4, Math.min(18, Math.round(verifiedScans / 1000) || 4));
+        scans.innerHTML = `
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Scans · 30 days</div>
+            <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:#0F1B2D;margin-top:6px">${verifiedScans.toLocaleString()}</div>
+            <div style="font-size:11px;color:#10B981;font-weight:700">▲ ${swing}% vs prior</div>
+            <svg viewBox="0 0 230 100" style="margin-top:14px;width:100%;height:100px">
+              <defs>
+                <linearGradient id="ma" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7C3AED" stop-opacity=".4"></stop><stop offset="1" stop-color="#7C3AED" stop-opacity="0"></stop></linearGradient>
+                <linearGradient id="ml" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"></stop><stop offset="1" stop-color="#7C3AED"></stop></linearGradient>
+              </defs>
+              <path d="M 5 80 L 25 70 L 45 75 L 65 55 L 85 60 L 105 40 L 125 50 L 145 30 L 165 38 L 185 20 L 205 25 L 225 12 L 225 95 L 5 95 Z" fill="url(#ma)"></path>
+              <path d="M 5 80 L 25 70 L 45 75 L 65 55 L 85 60 L 105 40 L 125 50 L 145 30 L 165 38 L 185 20 L 205 25 L 225 12" stroke="url(#ml)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+              <circle cx="225" cy="12" r="4" fill="#fff" stroke="#7C3AED" stroke-width="2.5"></circle>
+            </svg>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;margin-top:4px">
+              <span>Jan 1</span><span>Jan 15</span><span>Jan 30</span>
+            </div>
+        `;
+    }
+
+    const regionsPanel = document.getElementById("productRegionsCard");
+    if (regionsPanel) {
+        const regionRows = [
+            ["🇺🇸 United States", 0.34, "88%"],
+            ["🇧🇷 Brazil", 0.25, "68%"],
+            ["🇰🇪 Kenya", 0.2, "54%"],
+            ["🇮🇳 India", 0.13, "40%"],
+            ["🇩🇪 Germany", 0.08, "34%"]
+        ].map(([label, weight, width]) => {
+            const count = Math.max(1, Math.round(verifiedScans * Number(weight)));
+            return `
+                <div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">${label}</span><span style="color:#6B7793;font-weight:700">${count.toLocaleString()}</span></div>
+                  <div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:${width};height:100%;background:linear-gradient(90deg,#22D3EE,#7C3AED);border-radius:6px"></div></div>
+                </div>
+            `;
+        }).join("");
+
+        regionsPanel.innerHTML = `
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Top regions</div>
+            <div style="font-size:11px;color:#6B7793;margin-bottom:14px">Scans this month</div>
+            <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+              ${regionRows}
+            </div>
+        `;
+    }
+
+    const batchesPanel = document.getElementById("productBatchesCard");
+    if (batchesPanel) {
+        const batchRows = batches.length
+            ? batches.map(row => `
+                <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:12px 24px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:13px">
+                  <div style="font-family:monospace;font-weight:700;color:#0F1B2D">${row.batchNumber}</div>
+                  <div style="color:#3A4761">${packageLabel}</div>
+                  <div><span class="pill ${row.isExpired ? 'expired' : row.isAuthentic ? 'active' : 'pending'}">${row.isExpired ? 'Expired' : row.isAuthentic ? 'Active' : 'Pending'}</span></div>
+                  <div style="color:#0F1B2D;font-weight:600">${formatDateLabel(row.expiryDate)}</div>
+                  <div style="color:#3A4761">${row.route || `${row.manufacturerName} → Pharmacy`}</div>
+                  <div style="font-family:monospace;font-size:11px;color:#7C3AED;text-align:right">${formatShortAddress(row.id)} ↗</div>
+                </div>
+            `).join("")
+            : `
+                <div class="empty-state" style="min-height:126px;display:flex;flex-direction:column;gap:10px">
+                  <span>No seeded batches found for this SKU yet</span>
+                  <button type="button" class="btn-grad" data-action="mint-new-batch" data-page="dashboard" style="padding:10px 18px;font-size:13px">Mint first batch</button>
+                </div>
+            `;
+
+        batchesPanel.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #EEF1F7">
+              <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:16px;color:#0F1B2D">Recent batches for this product</h3>
+              <button type="button" class="inline-link-btn" data-action="product-batches" style="font-size:13px;color:#7C3AED;font-weight:700">View all ${batchCount.toLocaleString()} →</button>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:10px 24px;border-bottom:1px solid #F1F3F9;font-size:11px;color:#6B7793;font-weight:700;text-transform:uppercase;letter-spacing:.06em">
+              <div>Batch #</div><div>Quantity</div><div>Status</div><div>Expiry</div><div>Route</div><div style="text-align:right">Tx</div>
+            </div>
+            ${batchRows}
+        `;
+    }
+}
+
+async function openProductBatchesForProduct() {
+    const product = getProduct();
+    const searchQuery = normalizeQuery(product.name).split(/\s+/).find(term => term.length > 2) || normalizeQuery(product.name);
+    batchSearchQuery = searchQuery;
+    currentProductFilter = "all";
+    showPage("batches");
+
+    const batchSearch = document.getElementById("batchSearch");
+    if (batchSearch) {
+        batchSearch.value = searchQuery;
+    }
+
+    await loadBatches();
+    applyBatchSearchFilter();
+    showToast(`Showing batches for ${product.name}`, "success");
+}
+
+async function openProductVerificationForProduct() {
+    const product = getProduct();
+    const batchId = getRelatedProductBatchId(product);
+
+    showPage("verify");
+
+    const input = document.getElementById("batchIdInput");
+    if (input) {
+        input.value = batchId || "";
+    }
+
+    if (batchId) {
+        showToast(`Loaded ${product.name} verification batch`, "success");
+        await verifyDrug(batchId);
+    } else {
+        showToast(`No seeded batch for ${product.name}; scan or enter a code`, "info");
+    }
+}
+
+async function openProductAuditTrailForProduct() {
+    const product = getProduct();
+    const batchId = getRelatedProductBatchId(product);
+
+    showPage("track");
+
+    const input = document.getElementById("trackBatchId");
+    if (input) {
+        input.value = batchId || "";
+    }
+
+    if (batchId) {
+        await trackBatch();
+        showToast(`Tracing ${product.name}`, "success");
+    } else {
+        showToast(`No seeded trail for ${product.name}; enter a batch ID`, "info");
+    }
+}
+
+function openProductComplianceForProduct() {
+    openInfoSection("legal");
+    showPage("info");
+    showToast(`${getProduct().name} compliance`, "info");
 }
 
 function normalizeQuery(value) {
@@ -518,6 +801,406 @@ function clearRegisterDraft() {
     }
 }
 
+const INFO_SECTION_CONTENT = {
+    features: {
+        badge: "Blueprint tour",
+        title: "Every dead label now lands somewhere useful.",
+        description: "The blueprint-driven UI now routes into real dapp behavior without touching the verification, tracking, or registration logic.",
+        metrics: [
+            { label: "Core flows", value: "Verify / Trace / Register", detail: "Still powered by the same contract and demo logic." },
+            { label: "Modes", value: "Demo + Live", detail: "The frontend still falls back safely when no chain is present." },
+            { label: "Screens", value: "11 + info hub", detail: "The original blueprint pages remain intact and responsive." },
+            { label: "Entrypoints", value: "HTML + localhost", detail: "Open the file directly or use the local server." }
+        ],
+        panels: [
+            {
+                kicker: "What stayed true",
+                title: "Dapp behavior",
+                copy: "The user-facing shell changed, but the operational logic underneath is the same battle-tested flow.",
+                points: [
+                    { icon: "✓", title: "Verification", detail: "Manual batch verification, QR scanning, proof export, and counterfeit reporting still work." },
+                    { icon: "⎘", title: "Supply chain", detail: "Trace rendering, custody chain timelines, and explorer links remain connected." },
+                    { icon: "▦", title: "Manufacturer tools", detail: "Drafts, batch registration, QR generation, and transfer actions remain functional." }
+                ],
+                footer: "Nothing here is a cosmetic-only dead end."
+            },
+            {
+                kicker: "What changed",
+                title: "Navigation coverage",
+                copy: "The labels that used to be static now open actual destinations instead of pretending to be links.",
+                points: [
+                    { icon: "→", title: "Top navigation", detail: "Products, features, pricing, and contact now route to real pages or the info hub." },
+                    { icon: "⚙", title: "Utility links", detail: "Docs, support, settings, terms, and privacy all lead somewhere useful." },
+                    { icon: "📱", title: "Mobile mockups", detail: "The phone tab bars and scan card now navigate to live app pages." }
+                ],
+                footer: "The result is still blueprint-authentic, only no longer hollow."
+            }
+        ],
+        actions: [
+            { label: "Start verifying", kind: "page", value: "verify", variant: "btn-grad" },
+            { label: "Open dashboard", kind: "page", value: "dashboard", variant: "btn-ghost" },
+            { label: "Browse products", kind: "page", value: "products", variant: "btn-soft" }
+        ]
+    },
+    pricing: {
+        badge: "Capability tiers",
+        title: "The app is local-first, then blockchain-ready.",
+        description: "This blueprint does not sell plans, but it does explain the operational tiers the interface now supports.",
+        metrics: [
+            { label: "Demo tier", value: "Free", detail: "Open the HTML file or run the local server." },
+            { label: "Pilot tier", value: "Live chain", detail: "MetaMask, Hardhat and deployed contract wiring." },
+            { label: "Ops tier", value: "Manufacturer", detail: "Batch creation, QR minting, and custody transfer." },
+            { label: "Support tier", value: "Guided", detail: "Troubleshooting, docs, and local drafts." }
+        ],
+        panels: [
+            {
+                kicker: "Tier fit",
+                title: "What each mode is for",
+                copy: "Every mode has a clear job, so demos can stay lightweight without losing the live path.",
+                points: [
+                    { icon: "◉", title: "Demo mode", detail: "Best for presenting the UI, proving flows, and testing without a chain connection." },
+                    { icon: "⛓", title: "Live mode", detail: "Best for MetaMask-backed interactions against the deployed contract." },
+                    { icon: "🛡", title: "Manufacturer mode", detail: "Best for batch registration, QR creation, transfers, and audit trails." }
+                ],
+                footer: "No feature gating, just clear usage paths."
+            },
+            {
+                kicker: "What you get",
+                title: "Included capabilities",
+                copy: "The same interface now covers the whole product story, not just the hero screens.",
+                points: [
+                    { icon: "📦", title: "Batch lifecycle", detail: "Register, preview, list, export, and trace batches from one shell." },
+                    { icon: "📡", title: "Proof flows", detail: "Save, download, share, and copy verification proofs without leaving the page." },
+                    { icon: "📈", title: "Analytics and support", detail: "Statistics, support links, and info pages are now functional destinations." }
+                ],
+                footer: "A more complete experience without adding unnecessary backend complexity."
+            }
+        ],
+        actions: [
+            { label: "Start demo", kind: "page", value: "verify", variant: "btn-grad" },
+            { label: "Register batch", kind: "page", value: "dashboard", variant: "btn-ghost" },
+            { label: "Open docs", kind: "info", value: "docs", variant: "btn-soft" }
+        ]
+    },
+    contact: {
+        badge: "Contact",
+        title: "A real contact surface instead of a static footer line.",
+        description: "Use this hub to reach the team, copy the support address, or jump straight to the help flow.",
+        metrics: [
+            { label: "Email", value: "support@dawatrace.dev", detail: "Clipboard and mailto actions both work." },
+            { label: "Response", value: "Within 1 day", detail: "For demos, bugs, and integration questions." },
+            { label: "Location", value: "Nairobi / Remote", detail: "Designed for the Kenya demo story but ready for anywhere." },
+            { label: "Channels", value: "Docs + support", detail: "The help paths now resolve in-app." }
+        ],
+        panels: [
+            {
+                kicker: "Reach the team",
+                title: "Support channels",
+                copy: "The UI now gives you concrete ways to ask for help instead of leaving you with decoration only.",
+                points: [
+                    { icon: "✉", title: "Email", detail: "Open a mail draft to support@dawatrace.dev with one click." },
+                    { icon: "▦", title: "Docs", detail: "Jump to the in-app docs hub for local run and usage guidance." },
+                    { icon: "⚑", title: "Issues", detail: "Copy a support summary and include the batch ID or screenshot." }
+                ],
+                footer: "Useful even if the user never leaves the browser."
+            },
+            {
+                kicker: "For demos",
+                title: "What to tell a reviewer",
+                copy: "If you are presenting the app, these are the three most useful starting points.",
+                points: [
+                    { icon: "1", title: "Verify", detail: "Show the scanner or manual batch verification path." },
+                    { icon: "2", title: "Trace", detail: "Show the chain timeline and proof export on the result page." },
+                    { icon: "3", title: "Manage", detail: "Show the manufacturer dashboard, batch list, and QR generation." }
+                ],
+                footer: "This keeps the story easy to explain without extra tooling."
+            }
+        ],
+        actions: [
+            { label: "Email support", kind: "mail", value: "support@dawatrace.dev", variant: "btn-grad" },
+            { label: "Copy address", kind: "copy", value: "support@dawatrace.dev", toast: "Support email copied", variant: "btn-ghost" },
+            { label: "Open docs", kind: "info", value: "docs", variant: "btn-soft" }
+        ]
+    },
+    settings: {
+        badge: "Settings",
+        title: "Local preferences and maintenance live here.",
+        description: "The old settings label now gives the user real maintenance actions instead of a dead sidebar entry.",
+        metrics: [
+            { label: "Drafts", value: "Local", detail: "Register drafts are stored in localStorage." },
+            { label: "Mode", value: "Demo ready", detail: "You can force the app back into demo mode at any time." },
+            { label: "Wallet", value: "Injected", detail: "The UI still expects a wallet extension for live mode." },
+            { label: "Reset", value: "One click", detail: "Clear drafts and return to a clean state fast." }
+        ],
+        panels: [
+            {
+                kicker: "Maintenance",
+                title: "What you can change",
+                copy: "These are the only settings that matter in this front-end-first build.",
+                points: [
+                    { icon: "✎", title: "Saved drafts", detail: "Clear any partially filled manufacturer draft in one click." },
+                    { icon: "◌", title: "Demo state", detail: "Return to the built-in demo database without reloading the app." },
+                    { icon: "⟲", title: "Local cache", detail: "The app still behaves well when opened directly as HTML." }
+                ],
+                footer: "A small settings surface, but it does something real."
+            },
+            {
+                kicker: "Maintenance tips",
+                title: "How to keep the demo smooth",
+                copy: "Use these actions before a presentation or integration test.",
+                points: [
+                    { icon: "1", title: "Reset the form", detail: "Remove stale draft values before a fresh demo run." },
+                    { icon: "2", title: "Return to demo", detail: "Re-enter demo mode to restore the sample data and stats." },
+                    { icon: "3", title: "Re-open dashboard", detail: "Jump straight back to manufacturer operations after cleanup." }
+                ],
+                footer: "Good housekeeping, without needing a server."
+            }
+        ],
+        actions: [
+            { label: "Clear drafts", kind: "run", value: "clearDrafts", variant: "btn-grad" },
+            { label: "Enter demo mode", kind: "run", value: "demoMode", variant: "btn-ghost" },
+            { label: "Open dashboard", kind: "page", value: "dashboard", variant: "btn-soft" }
+        ]
+    },
+    support: {
+        badge: "Support",
+        title: "Troubleshooting that resolves inside the app.",
+        description: "This page explains the most common issues and gives the user a useful next step instead of a dead end.",
+        metrics: [
+            { label: "Camera help", value: "Included", detail: "The scanner page explains permission and upload options." },
+            { label: "Wallet help", value: "Included", detail: "Unsupported wallet cards now route to this hub." },
+            { label: "Trace help", value: "Included", detail: "Batch tracing, history, and proof export are covered." },
+            { label: "State reset", value: "Local", detail: "Drafts and demo state can be reset without leaving the browser." }
+        ],
+        panels: [
+            {
+                kicker: "Common fixes",
+                title: "When something looks stuck",
+                copy: "These are the first things to try when a demo or live session needs recovery.",
+                points: [
+                    { icon: "📷", title: "Camera permissions", detail: "If scanning fails, allow camera access or use the upload QR flow." },
+                    { icon: "⛓", title: "Wallet connection", detail: "MetaMask is the supported live wallet in this build." },
+                    { icon: "🧾", title: "Batch lookup", detail: "Use the sample batch ID from the demo database if you need a fast trace." }
+                ],
+                footer: "Fast triage, not a blank support page."
+            },
+            {
+                kicker: "What to send",
+                title: "If you ask for help",
+                copy: "Include a concise summary and one concrete reference so the issue can be reproduced.",
+                points: [
+                    { icon: "#", title: "Batch ID", detail: "Include the batch reference or QR snapshot that failed." },
+                    { icon: "↗", title: "Page name", detail: "Mention whether the issue happened in verify, trace, dashboard, or mobile view." },
+                    { icon: "⤓", title: "Action taken", detail: "Describe the button you clicked and the result you expected." }
+                ],
+                footer: "Simple details make troubleshooting much faster."
+            }
+        ],
+        actions: [
+            { label: "Open verify", kind: "page", value: "verify", variant: "btn-grad" },
+            { label: "Open trace", kind: "page", value: "track", variant: "btn-ghost" },
+            { label: "Copy checklist", kind: "copy", value: "Batch ID, page name, action clicked, and what you expected.", toast: "Support checklist copied", variant: "btn-soft" }
+        ]
+    },
+    docs: {
+        badge: "Documentation",
+        title: "Local launch and usage notes, right in the app.",
+        description: "The docs link now points to a real local guide for running, verifying, and presenting DawaTrace.",
+        metrics: [
+            { label: "Start command", value: "npm start", detail: "Runs the local static server on port 3000." },
+            { label: "Open URL", value: "http://localhost:3000/", detail: "The root URL redirects into the frontend shell." },
+            { label: "Demo file", value: "frontend/index.html", detail: "Still works directly when you just want the static demo." },
+            { label: "Fallback", value: "Automatic", detail: "If deployment.json is missing, the app stays in demo mode." }
+        ],
+        panels: [
+            {
+                kicker: "Quick start",
+                title: "How to run it locally",
+                copy: "The highest-value local path is a small static server that serves the blueprint at localhost.",
+                points: [
+                    { icon: "1", title: "Install once", detail: "Run npm install if dependencies are missing." },
+                    { icon: "2", title: "Start server", detail: "Run npm start and open http://localhost:3000/." },
+                    { icon: "3", title: "Choose a mode", detail: "Use the HTML file for demo mode or connect MetaMask for the live chain path." }
+                ],
+                footer: "This is the cleanest way to review the app locally."
+            },
+            {
+                kicker: "Usage notes",
+                title: "What each page is for",
+                copy: "The blueprint pages are organized around the core drug-verification workflow.",
+                points: [
+                    { icon: "◉", title: "Verify", detail: "Scan QR codes or manually verify batch IDs." },
+                    { icon: "⇄", title: "Track", detail: "Trace custody hops, export proofs, and share the journey." },
+                    { icon: "▣", title: "Dashboard", detail: "Register batches, maintain drafts, and generate QR codes." }
+                ],
+                footer: "Useful for both demo narration and actual testing."
+            }
+        ],
+        actions: [
+            { label: "Copy launch steps", kind: "copy", value: "npm start\nopen http://localhost:3000/\nuse frontend/index.html for direct demo mode", toast: "Launch steps copied", variant: "btn-grad" },
+            { label: "Download guide", kind: "download", filename: "dawatrace-quick-start.txt", value: "DawaTrace quick start\n\n1. Run npm start.\n2. Open http://localhost:3000/.\n3. Use demo mode or connect MetaMask.\n4. Verify a sample batch such as DWT-AMX-2026-0528.", mime: "text/plain", variant: "btn-ghost" },
+            { label: "Open dashboard", kind: "page", value: "dashboard", variant: "btn-soft" }
+        ]
+    },
+    legal: {
+        badge: "Legal",
+        title: "Terms and privacy, summarized for the demo build.",
+        description: "The legal links now lead to a concrete explanation of how the app handles data and on-chain actions.",
+        metrics: [
+            { label: "Storage", value: "Local first", detail: "Drafts and UI state use browser storage when needed." },
+            { label: "Blockchain", value: "Transparent", detail: "Verification and custody events are written to the chain in live mode." },
+            { label: "Demo data", value: "Synthetic", detail: "The built-in database is only for local demonstration." },
+            { label: "Consent", value: "Explicit", detail: "Wallet connection and camera use require the user to opt in." }
+        ],
+        panels: [
+            {
+                kicker: "Terms",
+                title: "What the build expects",
+                copy: "Use the interface for verification, traceability, and batch management in a way that respects the workflow.",
+                points: [
+                    { icon: "✓", title: "User consent", detail: "Connecting a wallet or using the camera should always be explicit." },
+                    { icon: "✓", title: "Data integrity", detail: "Proofs and exports are generated from the current verification state." },
+                    { icon: "✓", title: "Demo caveat", detail: "Demo mode simulates a chain when the local blockchain is not running." }
+                ],
+                footer: "Straightforward terms for a demo that still feels real."
+            },
+            {
+                kicker: "Privacy",
+                title: "How user data is handled",
+                copy: "The app intentionally keeps personal data light and local where possible.",
+                points: [
+                    { icon: "◌", title: "Drafts", detail: "Register-form drafts stay in localStorage until the user clears them." },
+                    { icon: "◌", title: "QR uploads", detail: "Uploads are processed locally in the browser for the demo flow." },
+                    { icon: "◌", title: "On-chain actions", detail: "Only the required transaction data is sent to the blockchain." }
+                ],
+                footer: "Privacy by design, without overcomplicating the front end."
+            }
+        ],
+        actions: [
+            { label: "Copy summary", kind: "copy", value: "DawaTrace keeps drafts local, processes QR uploads in-browser for the demo, and only writes required transaction data on-chain.", toast: "Privacy summary copied", variant: "btn-grad" },
+            { label: "Back to connect", kind: "page", value: "connect", variant: "btn-ghost" },
+            { label: "Open docs", kind: "info", value: "docs", variant: "btn-soft" }
+        ]
+    }
+};
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
+}
+
+function openInfoSection(section) {
+    currentInfoSection = INFO_SECTION_CONTENT[section] ? section : "features";
+    showPage("info");
+}
+
+function setupInfoNavigation() {
+    document.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-info]");
+        if (!trigger) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openInfoSection(trigger.dataset.info);
+    }, true);
+}
+
+function renderInfoPanel(panel) {
+    const points = (panel.points || []).map(point => `
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:16px;background:#F8FAFD;border:1px solid #EEF1F7">
+          <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:#0F1B2D">${escapeHtml(point.icon || "◉")}</div>
+          <div>
+            <div style="font-weight:700;color:#0F1B2D">${escapeHtml(point.title)}</div>
+            <div style="font-size:13px;color:#6B7793;line-height:1.55;margin-top:4px">${escapeHtml(point.detail)}</div>
+          </div>
+        </div>
+    `).join("");
+
+    return `
+      <div style="display:flex;flex-direction:column;height:100%">
+        <div>
+          <div class="kicker">${escapeHtml(panel.kicker || "Overview")}</div>
+          <h3 style="margin:8px 0 6px;font-family:'Sora',sans-serif;font-size:24px;color:#0F1B2D">${escapeHtml(panel.title)}</h3>
+          <p style="margin:0;color:#6B7793;font-size:14px;line-height:1.6">${escapeHtml(panel.copy)}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:18px">
+          ${points}
+        </div>
+        ${panel.footer ? `<div style="margin-top:auto;padding-top:16px;font-size:13px;color:#3A4761;font-weight:600">${escapeHtml(panel.footer)}</div>` : ""}
+      </div>
+    `;
+}
+
+function renderInfoMetric(metric) {
+    return `
+      <div class="card" style="padding:16px 18px;background:rgba(255,255,255,.82);backdrop-filter:blur(14px)">
+        <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6B7793;font-weight:700">${escapeHtml(metric.label)}</div>
+        <div style="font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:#0F1B2D;margin-top:6px">${escapeHtml(metric.value)}</div>
+        <div style="font-size:12px;color:#6B7793;line-height:1.45;margin-top:4px">${escapeHtml(metric.detail)}</div>
+      </div>
+    `;
+}
+
+function renderInfoAction(action) {
+    const className = action.variant || "btn-soft";
+    let onclick = "";
+
+    switch (action.kind) {
+        case "page":
+            onclick = `showPage(${JSON.stringify(action.value)})`;
+            break;
+        case "copy":
+            onclick = `copyToClipboard(${JSON.stringify(action.value)}, ${JSON.stringify(action.toast || "Copied")})`;
+            break;
+        case "download":
+            onclick = `downloadText(${JSON.stringify(action.filename || "dawatrace-note.txt")}, ${JSON.stringify(action.value)}, ${JSON.stringify(action.mime || "text/plain")})`;
+            break;
+        case "mail":
+            onclick = `window.location.href=${JSON.stringify(`mailto:${action.value}`)}`;
+            break;
+        case "run":
+            if (action.value === "clearDrafts") {
+                onclick = `clearRegisterDraft();showToast(${JSON.stringify(action.toast || "Draft cleared")}, "success")`;
+            } else if (action.value === "demoMode") {
+                onclick = `enterDemoMode()`;
+            }
+            break;
+        case "info":
+            onclick = `openInfoSection(${JSON.stringify(action.value)})`;
+            break;
+        default:
+            onclick = `showToast("Action unavailable", "info")`;
+            break;
+    }
+
+    return `<button type="button" class="${className}" onclick='${onclick}'>${escapeHtml(action.label)}</button>`;
+}
+
+function renderInfoPage(section = currentInfoSection) {
+    const content = INFO_SECTION_CONTENT[section] || INFO_SECTION_CONTENT.features;
+    currentInfoSection = INFO_SECTION_CONTENT[section] ? section : "features";
+
+    const badge = document.getElementById("infoPageBadge");
+    const title = document.getElementById("infoPageTitle");
+    const description = document.getElementById("infoPageDescription");
+    const metrics = document.getElementById("infoPageMetrics");
+    const panelA = document.getElementById("infoPanelA");
+    const panelB = document.getElementById("infoPanelB");
+    const actions = document.getElementById("infoPageActions");
+
+    if (badge) badge.textContent = content.badge;
+    if (title) title.textContent = content.title;
+    if (description) description.textContent = content.description;
+    if (metrics) metrics.innerHTML = content.metrics.map(renderInfoMetric).join("");
+    if (panelA) panelA.innerHTML = renderInfoPanel(content.panels[0]);
+    if (panelB) panelB.innerHTML = renderInfoPanel(content.panels[1]);
+    if (actions) actions.innerHTML = content.actions.map(renderInfoAction).join("");
+}
+
 function renderProductDetail(productId = selectedProductId) {
     const product = getProduct(productId);
     selectedProductId = product.id;
@@ -632,6 +1315,9 @@ function applyBatchSearchFilter() {
 
 function syncPageState(page) {
     switch (page) {
+        case "info":
+            renderInfoPage(currentInfoSection);
+            break;
         case "dashboard":
             restoreRegisterDraft();
             loadStats();
@@ -727,6 +1413,7 @@ async function init() {
 
     // Setup event listeners
     setupNavigation();
+    setupInfoNavigation();
     setupVerifyTabs();
     setupForms();
     setupActionButtons();
@@ -955,6 +1642,24 @@ function setupActionButtons() {
                 pendingDashboardPrefill = selectedProductId;
                 showPage("dashboard");
                 showToast(`Editing ${getProduct().name}`, "success");
+                break;
+            case "product-overview":
+                showPage("product-detail");
+                break;
+            case "product-batches":
+                await openProductBatchesForProduct();
+                break;
+            case "product-qr":
+                generateQR(getProduct().sku);
+                break;
+            case "product-verifications":
+                await openProductVerificationForProduct();
+                break;
+            case "product-audit":
+                await openProductAuditTrailForProduct();
+                break;
+            case "product-compliance":
+                openProductComplianceForProduct();
                 break;
             case "mint-new-batch":
                 pendingDashboardPrefill = selectedProductId;

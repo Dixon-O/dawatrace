@@ -68,6 +68,7 @@ body{margin:0;padding:0;overflow:hidden;font-family:'Plus Jakarta Sans',system-u
 /* Sidebar */
 .sidebar{position:absolute;left:0;top:0;width:230px;height:100%;background:rgba(255,255,255,.55);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);padding:28px 18px}
 .nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#3A4761;font-weight:500;font-size:15px;margin-bottom:6px;cursor:pointer}
+.nav-item,button.nav-item{background:none;border:none;appearance:none;font:inherit;width:100%;text-align:left}
 .nav-item .ic{width:32px;height:32px;border-radius:9px;background:#F1F3F9;display:flex;align-items:center;justify-content:center;color:#6B7793}
 .nav-item.active{background:#fff;color:var(--ink);box-shadow:0 6px 16px rgba(15,27,45,.06);font-weight:600}
 .nav-item.active .ic{background:var(--grad);color:#fff}
@@ -103,6 +104,9 @@ body{margin:0;padding:0;overflow:hidden;font-family:'Plus Jakarta Sans',system-u
 .nav-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;padding:8px 14px;border-radius:999px;transition:all .18s ease}
 .nav-link:hover{color:var(--ink);background:rgba(255,255,255,.7)}
 .nav-link.active{color:var(--ink);background:#fff;box-shadow:0 6px 16px rgba(15,27,45,.06)}
+.inline-link-btn{display:inline-flex;align-items:center;gap:6px;border:none;background:none;padding:0;font:inherit;font-size:inherit;font-weight:600;color:inherit;cursor:pointer;transition:color .18s ease,opacity .18s ease,text-decoration-color .18s ease}
+.inline-link-btn:hover,.inline-link-btn:focus-visible{color:var(--ink)}
+.inline-link-btn:focus-visible{outline:none;text-decoration:underline;text-underline-offset:4px}
 .brand-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border-radius:999px;background:var(--violet);color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em}
 .wallet-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;border:none;background:var(--ink);color:#fff;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .18s ease;color .18s ease}
 .wallet-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(15,27,45,.18)}
@@ -198,6 +202,11 @@ body{margin:0;padding:0;overflow:hidden;font-family:'Plus Jakarta Sans',system-u
 .modal-close{position:absolute;top:14px;right:14px;border:none;width:34px;height:34px;border-radius:50%;background:#F1F3F9;font-weight:700;cursor:pointer;color:var(--ink)}
 .qr-display{margin:20px auto}
 .qr-batch-id{margin:0 0 18px;color:var(--muted);font-size:13px;font-family:monospace;word-break:break-all}
+
+.product-detail-tab{display:inline-flex;align-items:center;gap:0;padding:12px 20px;border:none;border-bottom:3px solid transparent;background:transparent;color:#6B7793;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:color .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease;white-space:nowrap}
+.product-detail-tab:hover{color:#0F1B2D}
+.product-detail-tab.active{color:#0F1B2D;font-weight:600;border-bottom-color:#7C3AED;margin-bottom:-1px}
+.product-detail-tab:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,58,237,.18);border-radius:10px 10px 0 0}
 
 /* Small screens */
 .brand--sidebar{font-size:18px}
