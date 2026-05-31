@@ -152,17 +152,47 @@ let contract = null;
 let contractAddress = null;
 let isConnected = false;
 let demoMode = true; // Always start in demo mode
+let selectedProductName = null;
+let lastVerifiedBatchId = null;
 
 // --- DOM Elements ---
 const connectWalletBtn = document.getElementById("connectWallet");
-const navLinks = document.querySelectorAll(".nav-link");
+const navLinks = document.querySelectorAll("[data-page]");
 const pages = document.querySelectorAll(".page");
 const verifyTabs = document.querySelectorAll(".verify-tab");
+const CANVAS_WIDTH = 1440;
+const CANVAS_HEIGHT = 900;
 
 function setActivePage(page) {
     navLinks.forEach(link => {
         link.classList.toggle("active", link.dataset.page === page);
     });
+}
+
+function fitCanvas() {
+    const canvas = document.querySelector(".canvas");
+    if (!canvas) return;
+
+    const scale = Math.min(
+        window.innerWidth / CANVAS_WIDTH,
+        window.innerHeight / CANVAS_HEIGHT,
+        1
+    );
+
+    canvas.style.setProperty("--canvas-scale", scale.toFixed(3));
+}
+
+function showPage(page) {
+    const target = document.getElementById(`page-${page}`);
+    if (!target) {
+        console.warn(`Page not found: ${page}`);
+        return;
+    }
+
+    pages.forEach(p => p.classList.add("hidden"));
+    target.classList.remove("hidden");
+    setActivePage(page);
+    fitCanvas();
 }
 
 function formatShortAddress(address) {
@@ -201,7 +231,9 @@ async function init() {
     setupNavigation();
     setupVerifyTabs();
     setupForms();
-    setActivePage("verify");
+    window.addEventListener("resize", fitCanvas);
+    fitCanvas();
+    showPage("landing");
 
     connectWalletBtn.addEventListener("click", connectWallet);
     document.getElementById("verifyBtn").addEventListener("click", verifyManual);
@@ -268,7 +300,7 @@ async function connectWallet() {
 
     try {
         // Step 1: Auto-switch to Hardhat localhost network
-        const HARDHAT_CHAIN_ID = "0x7A69"; // 31337 in hex
+        const HARDHAT_CHAIN_ID = "0x539"; // 1337 in hex
         try {
             await window.ethereum.request({
                 method: "wallet_switchEthereumChain",
@@ -349,14 +381,11 @@ function setupNavigation() {
 
             // Close mobile menu if open
             const navMenu = document.querySelector('.nav-links');
-            if (navMenu.classList.contains('open')) {
+            if (navMenu && navMenu.classList.contains('open')) {
                 navMenu.classList.remove('open');
             }
 
-            setActivePage(target);
-
-            pages.forEach(p => p.classList.add("hidden"));
-            document.getElementById(`page-${target}`).classList.remove("hidden");
+            showPage(target);
         });
     });
 }
@@ -403,6 +432,7 @@ async function verifyDrug(batchId) {
             DEMO_DB.runtimeBatches.find(b => b.id === batchId);
 
         if (batch) {
+            const chain = DEMO_DB.custodyChains[batchId] || [];
             displayResult({
                 isAuthentic: true,
                 drugName: batch.drugName,
@@ -412,19 +442,20 @@ async function verifyDrug(batchId) {
                 expiryDate: BigInt(batch.expiryDate),
                 isExpired: batch.isExpired,
                 custodyCount: BigInt(batch.custodyCount || 1)
-            }, batchId);
+            }, batchId, chain);
         } else {
-            displayResult({ isAuthentic: false }, batchId);
+            displayResult({ isAuthentic: false }, batchId, []);
         }
         DEMO_DB.stats.verifications++;
     } else {
         // --- LIVE BLOCKCHAIN VERIFICATION ---
         try {
             const result = await contract.verifyDrugView(batchId);
-            displayResult(result, batchId);
+            const chain = result.isAuthentic ? await contract.getCustodyChain(batchId) : [];
+            displayResult(result, batchId, chain);
         } catch (err) {
             console.error("Verification error:", err);
-            displayResult({ isAuthentic: false }, batchId);
+            displayResult({ isAuthentic: false }, batchId, []);
         }
     }
 
@@ -432,22 +463,54 @@ async function verifyDrug(batchId) {
     btn.disabled = false;
 }
 
-function displayResult(result, batchId) {
+function displayResult(result, batchId, chain = []) {
     const section = document.getElementById("resultSection");
     const card = document.getElementById("resultCard");
+    const banner = document.getElementById("resultBanner");
+    const bannerLabel = document.getElementById("resultBannerLabel");
+    const bannerTitle = document.getElementById("resultBannerTitle");
+    const bannerSub = document.getElementById("resultBannerSub");
+    const journey = document.getElementById("resultJourneyContent");
 
-    section.classList.remove("hidden");
+    showPage("result");
+    if (section) {
+        section.classList.remove("hidden");
+    }
 
-    if (result.isAuthentic) {
+    lastVerifiedBatchId = batchId;
+    const txLabel = formatShortAddress(batchId);
+    const isAuthentic = !!result.isAuthentic;
+
+    if (banner) {
+        banner.style.background = isAuthentic
+            ? "linear-gradient(135deg,#10B981 0%,#22D3EE 60%,#7C3AED 100%)"
+            : "linear-gradient(135deg,#EF4444 0%,#F59E0B 100%)";
+    }
+
+    if (bannerLabel) {
+        bannerLabel.textContent = isAuthentic ? "VERIFICATION SUCCESSFUL" : "VERIFICATION FAILED";
+    }
+    if (bannerTitle) {
+        bannerTitle.textContent = isAuthentic
+            ? "This product is authentic."
+            : "This batch could not be verified.";
+    }
+    if (bannerSub) {
+        bannerSub.innerHTML = isAuthentic
+            ? `Confirmed on-chain · ref <span style="font-family:monospace">${txLabel}</span>`
+            : `No on-chain match found · searched <span style="font-family:monospace">${txLabel}</span>`;
+    }
+
+    if (isAuthentic) {
         const mfgDate = formatDateLabel(result.manufactureDate);
         const expDate = formatDateLabel(result.expiryDate);
         const expiryBadge = result.isExpired ? '<span class="expired-badge">⚠️ EXPIRED</span>' : '';
 
-        card.className = "result-card authentic";
+        card.className = "card result-card authentic";
         card.innerHTML = `
-            <div class="result-icon">✅</div>
-            <div class="result-title">VERIFIED — Authentic Medicine</div>
-            <div class="result-subtitle">This medicine has been verified on the blockchain</div>
+            <div class="result-icon" style="background:linear-gradient(135deg,#10B981,#22D3EE);color:#fff">✓</div>
+            <div class="result-title">Verified medicine</div>
+            <div class="result-subtitle">This batch was validated against the blockchain registry.</div>
 
             <div class="result-details">
                 <div class="result-detail">
@@ -468,10 +531,7 @@ function displayResult(result, batchId) {
                 </div>
                 <div class="result-detail">
                     <div class="result-detail-label">Expiry Date</div>
-                    <div class="result-detail-value">
-                        ${expDate}
-                        ${expiryBadge}
-                    </div>
+                    <div class="result-detail-value">${expDate} ${expiryBadge}</div>
                 </div>
                 <div class="result-detail">
                     <div class="result-detail-label">Custody Transfers</div>
@@ -480,34 +540,55 @@ function displayResult(result, batchId) {
             </div>
 
             <div class="result-actions">
-                <button class="btn btn-primary" onclick="trackFromResult('${batchId}')">
-                    🔗 View Full Supply Chain
-                </button>
+                <button class="btn btn-primary" onclick="trackFromResult('${batchId}')">View full supply chain</button>
+                <button class="btn btn-secondary" onclick="copyBatchId('${batchId}')">Copy batch ref</button>
             </div>
         `;
     } else {
-        card.className = "result-card counterfeit";
+        card.className = "card result-card counterfeit";
         card.innerHTML = `
-            <div class="result-icon">❌</div>
-            <div class="result-title">WARNING — Not Verified</div>
-            <div class="result-subtitle">This batch ID could not be verified on the blockchain. This medicine may be counterfeit.</div>
+            <div class="result-icon" style="background:linear-gradient(135deg,#EF4444,#F59E0B);color:#fff">!</div>
+            <div class="result-title">Verification failed</div>
+            <div class="result-subtitle">We could not match this batch to a trusted on-chain record.</div>
 
-            <div class="result-details" style="grid-template-columns: 1fr;">
+            <div class="result-details" style="grid-template-columns:1fr;">
                 <div class="result-detail">
-                    <div class="result-detail-label">Searched Batch ID</div>
-                    <div class="result-detail-value" style="font-size: 0.8rem; word-break: break-all;">${batchId}</div>
+                    <div class="result-detail-label">Searched Batch Ref</div>
+                    <div class="result-detail-value" style="font-size:12px;word-break:break-all">${batchId}</div>
                 </div>
             </div>
 
             <div class="result-actions">
-                <button class="btn btn-primary" style="background: var(--accent-red);" onclick="reportCounterfeit('${batchId}')">
-                    🚨 Report Counterfeit
-                </button>
+                <button class="btn btn-primary" style="background:#EF4444;box-shadow:0 10px 24px rgba(239,68,68,.2)" onclick="reportCounterfeit('${batchId}')">Report counterfeit</button>
+                <button class="btn btn-secondary" onclick="showPage('verify')">Try another batch</button>
             </div>
         `;
     }
 
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (journey) {
+        if (isAuthentic && chain.length) {
+            const roleNames = ["None", "Manufacturer", "Distributor", "Pharmacy"];
+            journey.innerHTML = chain.slice(0, 5).map((record, index) => {
+                const stepName = roleNames[Number(record.toRole)] || "Trace";
+                const time = new Date(Number(record.timestamp) * 1000).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric"
+                });
+                const color = ["#B8E4FF", "#FFC9D6", "#FFE08A", "#D8C8FF", "#A8F0DC"][index % 5];
+                return `
+                    <div style="flex:1;min-width:0;text-align:center">
+                        <div style="width:48px;height:48px;border-radius:14px;background:${color};display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#0F1B2D">${stepName.charAt(0)}</div>
+                        <div style="font-size:13px;font-weight:700;margin-top:8px;color:#0F1B2D">${stepName}</div>
+                        <div style="font-size:11px;color:#6B7793">${time}</div>
+                    </div>
+                `;
+            }).join(`<div style="height:48px;display:flex;align-items:center;color:#CBD5E1;font-size:18px">›</div>`);
+        } else if (isAuthentic) {
+            journey.innerHTML = `<div class="empty-state">No custody trail is available for this batch yet.</div>`;
+        } else {
+            journey.innerHTML = `<div class="empty-state">Try a different batch or report the suspicious code for review.</div>`;
+        }
+    }
 }
 
 async function reportCounterfeit(batchId) {
@@ -639,6 +720,12 @@ function generateQR(batchId) {
 
 function closeModal() {
     document.getElementById("qrModal").classList.add("hidden");
+}
+
+function toggleTransferModal(open = true) {
+    const modal = document.getElementById("transferModal");
+    if (!modal) return;
+    modal.classList.toggle("hidden", !open);
 }
 
 // ============================================================
@@ -785,66 +872,115 @@ function setupForms() {
 // ============================================================
 
 async function loadBatches() {
+    const preview = document.getElementById("batchListPreview");
     const list = document.getElementById("batchList");
 
-    if (demoMode) {
-        // --- DEMO MODE BATCH LIST ---
-        const allBatches = Object.entries(DEMO_DB.batches);
+    if (!preview && !list) return;
 
-        if (allBatches.length === 0) {
+    const rows = [];
+
+    if (demoMode) {
+        for (const [id, batch] of Object.entries(DEMO_DB.batches)) {
+            rows.push({
+                id,
+                drugName: batch.drugName,
+                batchNumber: batch.batchNumber,
+                manufacturerName: batch.manufacturerName,
+                expiryDate: batch.expiryDate,
+                manufactureDate: batch.manufactureDate,
+                isExpired: !!batch.isExpired,
+                isAuthentic: batch.isAuthentic !== false,
+                route: "Manufacturer → Pharmacy",
+            });
+        }
+    } else if (contract) {
+        try {
+            const total = Number(await contract.getTotalBatches());
+            for (let i = total - 1; i >= Math.max(0, total - 10); i--) {
+                const batchId = await contract.getBatchIdAtIndex(i);
+                const batch = await contract.drugBatches(batchId);
+                let holder = "";
+                try {
+                    holder = formatShortAddress(await contract.currentHolder(batchId));
+                } catch {
+                    holder = "Network";
+                }
+                rows.push({
+                    id: batchId,
+                    drugName: batch.drugName,
+                    batchNumber: batch.batchNumber,
+                    manufacturerName: batch.manufacturerName,
+                    expiryDate: batch.expiryDate,
+                    manufactureDate: batch.manufactureDate,
+                    isExpired: !!batch.expiryDate && Number(batch.expiryDate) * 1000 < Date.now(),
+                    isAuthentic: true,
+                    route: `${batch.manufacturerName} → ${holder}`,
+                });
+            }
+        } catch (err) {
+            console.error("Load batches error:", err);
+            if (list) {
+                list.innerHTML = '<div class="empty-state">Error loading batches</div>';
+            }
+            if (preview) {
+                preview.innerHTML = '<div class="empty-state">Error loading batch preview</div>';
+            }
+            return;
+        }
+    }
+
+    const sorted = rows.sort((a, b) => Number(b.manufactureDate || 0) - Number(a.manufactureDate || 0));
+
+    const renderStatusPill = (row) => {
+        if (row.isExpired) return `<span class="pill expired">Expired</span>`;
+        return row.isAuthentic ? `<span class="pill active">Active</span>` : `<span class="pill pending">Pending</span>`;
+    };
+
+    if (preview) {
+        if (!sorted.length) {
+            preview.innerHTML = '<div class="empty-state">No batches registered yet</div>';
+        } else {
+            preview.innerHTML = sorted.slice(0, 3).map(row => `
+                <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                        <span class="${row.isExpired ? 'pill expired' : 'pill active'}">${row.isExpired ? 'Expired' : 'Active'}</span>
+                        <div style="min-width:0">
+                            <div style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.batchNumber}</div>
+                            <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.drugName}</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
+                </div>
+            `).join("");
+        }
+    }
+
+    if (list) {
+        if (!sorted.length) {
             list.innerHTML = '<div class="empty-state">No batches registered yet</div>';
             return;
         }
 
-        list.innerHTML = allBatches.map(([id, batch]) => `
-            <div class="batch-item">
-                <div class="batch-info">
-                    <h4>💊 ${batch.drugName}</h4>
-                    <p>${batch.batchNumber}</p>
-                    <span class="batch-meta">ID ${formatShortAddress(id)} · ${batch.manufacturerName}</span>
+        list.innerHTML = sorted.map(row => `
+            <div style="display:grid;grid-template-columns:160px 1.4fr 1fr 130px 130px 1fr 200px;gap:0;padding:14px 26px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:14px;background:${row.isExpired ? '#FCFCFE' : '#fff'}">
+                <div style="font-family:monospace;font-weight:700;color:var(--ink)">${row.batchNumber || formatShortAddress(row.id)}</div>
+                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);display:flex;align-items:center;justify-content:center;flex-shrink:0">💊</div>
+                    <div style="min-width:0">
+                        <div style="font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.drugName}</div>
+                        <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${formatShortAddress(row.id)}</div>
+                    </div>
                 </div>
-                <div class="batch-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="generateQR('${id}')">QR</button>
-                    <button class="btn btn-sm btn-secondary" onclick="copyBatchId('${id}')">📋</button>
+                <div style="color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.manufacturerName}</div>
+                <div>${renderStatusPill(row)}</div>
+                <div style="color:${row.isExpired ? '#EF4444' : 'var(--ink)'};font-weight:600">${formatDateLabel(row.expiryDate)}</div>
+                <div style="color:var(--ink-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${row.route}</div>
+                <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                    <button class="btn btn-sm btn-secondary" onclick="generateQR('${row.id}')">QR</button>
+                    <button class="btn btn-sm btn-secondary" onclick="copyBatchId('${row.id}')">Copy</button>
                 </div>
             </div>
         `).join("");
-        return;
-    }
-
-    // --- LIVE BLOCKCHAIN BATCH LIST ---
-    if (!contract) return;
-    list.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
-
-    try {
-        const total = Number(await contract.getTotalBatches());
-        if (total === 0) {
-            list.innerHTML = '<div class="empty-state">No batches registered yet</div>';
-            return;
-        }
-
-        let html = "";
-        for (let i = total - 1; i >= Math.max(0, total - 10); i--) {
-            const batchId = await contract.getBatchIdAtIndex(i);
-            const batch = await contract.drugBatches(batchId);
-            html += `
-                <div class="batch-item">
-                    <div class="batch-info">
-                        <h4>💊 ${batch.drugName}</h4>
-                        <p>${batch.batchNumber}</p>
-                        <span class="batch-meta">ID ${formatShortAddress(batchId)} · ${batch.manufacturerName}</span>
-                    </div>
-                    <div class="batch-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="generateQR('${batchId}')">QR</button>
-                        <button class="btn btn-sm btn-secondary" onclick="copyBatchId('${batchId}')">📋</button>
-                    </div>
-                </div>
-            `;
-        }
-        list.innerHTML = html;
-    } catch (err) {
-        console.error("Load batches error:", err);
-        list.innerHTML = '<div class="empty-state">Error loading batches</div>';
     }
 }
 
@@ -982,10 +1118,7 @@ function renderTimeline(container, batch, chain) {
 }
 
 function trackFromResult(batchId) {
-    setActivePage("track");
-    pages.forEach(p => p.classList.add("hidden"));
-    document.getElementById("page-track").classList.remove("hidden");
-
+    showPage("track");
     document.getElementById("trackBatchId").value = batchId;
     trackBatch();
 }

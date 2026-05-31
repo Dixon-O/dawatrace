@@ -1,641 +1,1516 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DawaTrace - Blockchain Drug Verification</title>
-    <meta name="description"
-        content="Verify medicine authenticity on the blockchain. Scan a QR code or enter a batch ID to instantly check if your medicine is genuine.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="fresh-ui.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DawaTrace - Blockchain Drug Verification</title>
+  <meta name="description" content="Verify medicine authenticity on the blockchain. Scan a QR code or enter a batch ID to instantly check if your medicine is genuine.">
+  <link rel="stylesheet" href="theme.css">
 </head>
-
 <body>
-    <div class="aurora" aria-hidden="true">
+  <div class="viewport">
+    <div class="canvas">
+      <div class="aurora" aria-hidden="true">
         <span class="blob3"></span>
         <span class="blob4"></span>
-    </div>
+      </div>
 
-    <nav class="navbar" id="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <div class="brand">
-                    <div class="brand-logo"></div>
-                    <span>DawaTrace</span>
-                </div>
-                <span class="brand-badge">BETA</span>
-            </div>
-
-            <button class="hamburger" id="hamburger"
-                onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-
-            <div class="nav-links">
-                <a href="#verify" class="nav-link active" data-page="verify">Verify Medicine</a>
-                <a href="#dashboard" class="nav-link" data-page="dashboard">Manufacturer</a>
-                <a href="#track" class="nav-link" data-page="track">Track Batch</a>
-                <a href="#about" class="nav-link" data-page="about">Analytics</a>
-            </div>
-
-            <button class="wallet-btn" id="connectWallet">
-                <span class="wallet-dot"></span>
-                Connect Wallet
-            </button>
+      <!-- 01 Landing -->
+      <section class="page" id="page-landing" style="background:#FAFBFE;">
+        <div style="position:absolute;left:80px;top:36px;width:1280px;height:60px;display:flex;align-items:center;justify-content:space-between;z-index:10">
+          <div class="brand">
+            <div class="brand-logo"></div>
+            <span>DawaTrace</span>
+            <span class="brand-badge">BETA</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:40px;font-weight:500;color:#3A4761;font-size:15px">
+            <span>Products</span><span>Features</span><span>Pricing</span><span>Contact</span>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button type="button" class="btn-ghost" style="padding:10px 22px;font-size:14px" data-page="connect">Sign in</button>
+            <button type="button" class="btn-grad" style="padding:11px 22px;font-size:14px" data-page="connect">Connect Wallet</button>
+          </div>
         </div>
-    </nav>
 
-    <main>
-        <section class="page active" id="page-verify">
-            <div class="hero">
-                <div class="hero-grid">
-                    <div class="hero-copy">
-                        <span class="kicker">Blockchain-verified · Trusted by 240+ manufacturers</span>
-                        <h1>Verify Authenticity,<br><span class="gradient-text">Track Every Step.</span></h1>
-                        <p class="hero-subtitle">
-                            The decentralized medicine verification layer for consumers, manufacturers, and pharmacies.
-                            Scan a QR code or enter a batch ID to confirm authenticity in seconds.
-                        </p>
-
-                        <div class="hero-actions">
-                            <a href="#verify" class="nav-link btn btn-primary btn-lg" data-page="verify">Start
-                                Verifying</a>
-                            <a href="#dashboard" class="nav-link btn btn-secondary btn-lg" data-page="dashboard">For
-                                Manufacturers</a>
-                        </div>
-
-                        <div class="trust-row">
-                            <div class="trust-chip"><span class="trust-ic">◉</span>Blockchain Certified</div>
-                            <div class="trust-chip"><span class="trust-ic">🛡</span>Secure Verification</div>
-                            <div class="trust-chip"><span class="trust-ic">🌐</span>WHO-Compliant</div>
-                            <div class="trust-chip"><span class="trust-ic">🌿</span>Mobile-First</div>
-                        </div>
-
-                        <div class="verify-box">
-                            <div class="verify-tabs">
-                                <button class="verify-tab active" data-tab="scan">📷 Scan QR Code</button>
-                                <button class="verify-tab" data-tab="manual">⌨ Enter Batch ID</button>
-                            </div>
-
-                            <div class="verify-content" id="tab-scan">
-                                <div class="qr-scanner-container">
-                                    <div id="qr-reader" class="qr-reader">
-                                        <div class="qr-placeholder">
-                                            <div class="qr-frame"></div>
-                                            <p>Click to start camera</p>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-primary btn-lg" id="startScan">
-                                        📷 Start Scanner
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="verify-content hidden" id="tab-manual">
-                                <div class="input-group">
-                                    <input type="text" id="batchIdInput" placeholder="Enter Batch ID (0x...)"
-                                        class="input-field">
-                                    <button class="btn btn-primary" id="verifyBtn">
-                                        🔍 Verify
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="hero-visual">
-                        <div class="visual-stack">
-                            <div class="floating-card top-left">
-                                <span class="fc-ic">✓</span>
-                                <div>
-                                    <div class="small">Verification</div>
-                                    <div class="big">Authentic on-chain</div>
-                                </div>
-                            </div>
-
-                            <div class="floating-card top-right">
-                                <span class="fc-ic">▣</span>
-                                <div>
-                                    <div class="small">Block</div>
-                                    <div class="big">#18,394</div>
-                                </div>
-                            </div>
-
-                            <div class="scan-card glass">
-                                <div class="scan-card-head">
-                                    <span class="tag">Instant Scan</span>
-                                    <span class="tag">Polygon</span>
-                                </div>
-                                <div class="scan-viewport">
-                                    <div class="scan-frame"></div>
-                                    <div class="scan-line"></div>
-                                </div>
-                                <div class="scan-caption">Scan to Verify</div>
-                                <div class="scan-support">Align QR within the frame</div>
-                            </div>
-
-                            <div class="floating-card bottom-left">
-                                <span class="fc-ic">◉</span>
-                                <div>
-                                    <div class="small">Verified</div>
-                                    <div class="big">tx 0x4a…d2b9</div>
-                                </div>
-                            </div>
-
-                            <div class="floating-card bottom-right">
-                                <span class="fc-ic">⟲</span>
-                                <div>
-                                    <div class="small">Supply chain</div>
-                                    <div class="big">Manufacturer → Pharmacy</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="result-section hidden" id="resultSection">
-                <div class="result-card" id="resultCard"></div>
-            </div>
-
-            <div class="stats-bar">
-                <div class="stat-item">
-                    <div class="stat-number" id="statVerifications">0</div>
-                    <div class="stat-label">Verifications</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="statBatches">0</div>
-                    <div class="stat-label">Registered Batches</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="statParticipants">0</div>
-                    <div class="stat-label">Participants</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">Kenya</div>
-                    <div class="stat-label">Pilot Region</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="page hidden" id="page-dashboard">
-            <div class="dashboard-shell">
-                <aside class="sidebar glass">
-                    <div class="brand brand--sidebar">
-                        <div class="brand-logo"></div>
-                        <span>DawaTrace</span>
-                    </div>
-
-                    <nav class="sidebar-nav">
-                        <a href="#dashboard" class="nav-link active" data-page="dashboard">Dashboard</a>
-                        <a href="#verify" class="nav-link" data-page="verify">Verify</a>
-                        <a href="#track" class="nav-link" data-page="track">Batch Management</a>
-                        <a href="#about" class="nav-link" data-page="about">Analytics</a>
-                    </nav>
-
-                    <div class="sidebar-foot">
-                        Manufacturer workspace with batch registration, custody transfers, and live QR generation.
-                    </div>
-                </aside>
-
-                <div class="dashboard-main">
-                    <div class="page-header">
-                        <span class="kicker">Manufacturer workspace</span>
-                        <h2>Dashboard</h2>
-                        <p>Register batches, mint QR codes, and move custody across the supply chain.</p>
-                    </div>
-
-                    <div class="dashboard-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Register New Batch</h3>
-                                <span class="tag">Auto-mint QR</span>
-                            </div>
-                            <form id="registerForm" class="form">
-                                <div class="form-group">
-                                    <label>Drug Name</label>
-                                    <input type="text" id="drugName" placeholder="e.g. Amoxicillin 500mg" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Batch Number</label>
-                                    <input type="text" id="batchNumber" placeholder="e.g. AMX-BATCH-2026-001" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Expiry Date</label>
-                                    <input type="date" id="expiryDate" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>IPFS Metadata Hash (optional)</label>
-                                    <input type="text" id="ipfsHash" placeholder="Qm...">
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-full">
-                                    Register Batch on Blockchain
-                                </button>
-                            </form>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Recent Batches</h3>
-                                <button class="btn btn-secondary btn-sm" id="refreshBatches">Refresh</button>
-                            </div>
-                            <div id="batchList" class="batch-list">
-                                <div class="empty-state">
-                                    <p>No batches registered yet</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card" style="margin-top: 20px;">
-                        <div class="card-header">
-                            <h3>Transfer Custody</h3>
-                            <span class="tag">Chain handoff</span>
-                        </div>
-                        <form id="transferForm" class="form form-inline">
-                            <div class="form-group">
-                                <label>Batch ID</label>
-                                <input type="text" id="transferBatchId" placeholder="0x..." required>
-                            </div>
-                            <div class="form-group">
-                                <label>Recipient Address</label>
-                                <input type="text" id="recipientAddress" placeholder="0x..." required>
-                            </div>
-                            <div class="form-group">
-                                <label>Location</label>
-                                <input type="text" id="transferLocation" placeholder="e.g. Nairobi Distribution Hub"
-                                    required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Transfer</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="page hidden" id="page-track">
-            <div class="dashboard-container track-shell">
-                <div class="page-header">
-                    <span class="kicker">Live tracking</span>
-                    <h2>Supply Chain Trace</h2>
-                    <p>View the complete custody chain and provenance trail from manufacturer to pharmacy.</p>
-                </div>
-
-                <div class="card trace-card">
-                    <div class="input-group" style="margin-bottom: 20px;">
-                        <input type="text" id="trackBatchId" placeholder="Enter Batch ID (0x...)" class="input-field">
-                        <button class="btn btn-primary" id="trackBtn">Track</button>
-                    </div>
-
-                    <div id="custodyTimeline" class="timeline">
-                        <div class="empty-state">
-                            <p>Enter a Batch ID to view its journey</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="page hidden" id="page-about">
-            <div class="dashboard-shell analytics-shell">
-                <aside class="sidebar glass">
-                    <div class="brand brand--sidebar">
-                        <div class="brand-logo"></div>
-                        <span>DawaTrace</span>
-                    </div>
-
-                    <nav class="sidebar-nav">
-                        <a href="#dashboard" class="nav-link" data-page="dashboard">Dashboard</a>
-                        <a href="#verify" class="nav-link" data-page="verify">Verify</a>
-                        <a href="#track" class="nav-link" data-page="track">Trace</a>
-                        <a href="#about" class="nav-link active" data-page="about">Analytics</a>
-                    </nav>
-
-                    <div class="sidebar-foot">
-                        Cross-network verification insights, top products, and live chain events in one view.
-                    </div>
-                </aside>
-
-                <div class="dashboard-main">
-                    <div class="page-header">
-                        <span class="kicker">Trust signals</span>
-                        <h2>Analytics</h2>
-                        <p>Monitor verification volume, product performance, and counterfeit risk across the network.</p>
-                    </div>
-
-                    <div class="analytics-grid">
-                        <div class="card chart-wrap">
-                            <div class="card-header">
-                                <div>
-                                    <h3>Verifications over time</h3>
-                                    <p class="subtle" style="margin: 4px 0 0;">Daily on-chain reads · last 90 days</p>
-                                </div>
-                                <div class="chart-legend">
-                                    <span class="tag" style="background: rgba(124, 58, 237, 0.12); color: var(--accent-purple);">Authentic</span>
-                                    <span class="tag" style="background: rgba(239, 68, 68, 0.12); color: var(--accent-red);">Counterfeit</span>
-                                </div>
-                            </div>
-                            <svg viewBox="0 0 680 240" aria-hidden="true">
-                                <defs>
-                                    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0" stop-color="#7c3aed" stop-opacity="0.32" />
-                                        <stop offset="1" stop-color="#7c3aed" stop-opacity="0" />
-                                    </linearGradient>
-                                    <linearGradient id="line" x1="0" x2="1">
-                                        <stop offset="0" stop-color="#22d3ee" />
-                                        <stop offset="1" stop-color="#7c3aed" />
-                                    </linearGradient>
-                                </defs>
-                                <g stroke="#eef1f7" stroke-width="1">
-                                    <line x1="40" y1="20" x2="660" y2="20" />
-                                    <line x1="40" y1="70" x2="660" y2="70" />
-                                    <line x1="40" y1="120" x2="660" y2="120" />
-                                    <line x1="40" y1="170" x2="660" y2="170" />
-                                    <line x1="40" y1="210" x2="660" y2="210" />
-                                </g>
-                                <g font-family="Plus Jakarta Sans" font-size="10" fill="#9ca3af">
-                                    <text x="10" y="24">2k</text>
-                                    <text x="10" y="74">1.5k</text>
-                                    <text x="10" y="124">1k</text>
-                                    <text x="10" y="174">.5k</text>
-                                    <text x="10" y="214">0</text>
-                                </g>
-                                <path d="M 40 170 L 90 150 L 140 160 L 190 130 L 240 145 L 290 110 L 340 120 L 390 80 L 440 95 L 490 60 L 540 75 L 590 45 L 660 55 L 660 210 L 40 210 Z"
-                                    fill="url(#area)" />
-                                <path d="M 40 170 L 90 150 L 140 160 L 190 130 L 240 145 L 290 110 L 340 120 L 390 80 L 440 95 L 490 60 L 540 75 L 590 45 L 660 55"
-                                    stroke="url(#line)" stroke-width="3" fill="none" stroke-linecap="round" />
-                                <path d="M 40 200 L 90 198 L 140 202 L 190 195 L 240 200 L 290 192 L 340 197 L 390 190 L 440 195 L 490 188 L 540 192 L 590 186 L 660 190"
-                                    stroke="#ef4444" stroke-width="2" fill="none" stroke-dasharray="4 4" />
-                                <circle cx="540" cy="75" r="6" fill="#fff" stroke="#7c3aed" stroke-width="3" />
-                                <g transform="translate(440 22)">
-                                    <rect width="160" height="40" rx="10" fill="#0f1b2d" />
-                                    <text x="14" y="18" font-family="Plus Jakarta Sans" font-size="11" fill="#9ca3af">Mar
-                                        14 · authentic</text>
-                                    <text x="14" y="33" font-family="Sora" font-size="13" font-weight="700"
-                                        fill="#fff">1,842 verifications</text>
-                                </g>
-                                <line x1="540" y1="32" x2="540" y2="70" stroke="#0f1b2d" stroke-width="1"
-                                    stroke-dasharray="2 2" />
-                                <g font-family="Plus Jakarta Sans" font-size="10" fill="#9ca3af">
-                                    <text x="35" y="228">Dec 1</text>
-                                    <text x="170" y="228">Dec 22</text>
-                                    <text x="305" y="228">Jan 14</text>
-                                    <text x="440" y="228">Feb 6</text>
-                                    <text x="565" y="228">Feb 28</text>
-                                </g>
-                            </svg>
-                        </div>
-
-                        <div class="card top-products">
-                            <div class="card-header">
-                                <h3>Top verified products</h3>
-                                <span class="tag">30 days</span>
-                            </div>
-
-                            <div class="product-row">
-                                <div>
-                                    <div style="display:flex;justify-content:space-between;gap:12px;">
-                                        <span style="font-weight:700;color:var(--ink);">Amoxicillin 500mg</span>
-                                        <span style="color:var(--text-muted);font-weight:800;">12.4k</span>
-                                    </div>
-                                    <div class="bar"><span style="width:90%;"></span></div>
-                                </div>
-                            </div>
-
-                            <div class="product-row">
-                                <div>
-                                    <div style="display:flex;justify-content:space-between;gap:12px;">
-                                        <span style="font-weight:700;color:var(--ink);">Paracetamol Syrup</span>
-                                        <span style="color:var(--text-muted);font-weight:800;">9.1k</span>
-                                    </div>
-                                    <div class="bar"><span
-                                            style="width:72%; background: linear-gradient(90deg, #34d399, #22d3ee);"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="product-row">
-                                <div>
-                                    <div style="display:flex;justify-content:space-between;gap:12px;">
-                                        <span style="font-weight:700;color:var(--ink);">Insulin Glargine</span>
-                                        <span style="color:var(--text-muted);font-weight:800;">7.8k</span>
-                                    </div>
-                                    <div class="bar"><span
-                                            style="width:60%; background: linear-gradient(90deg, #f472b6, #7c3aed);"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="product-row">
-                                <div>
-                                    <div style="display:flex;justify-content:space-between;gap:12px;">
-                                        <span style="font-weight:700;color:var(--ink);">Ibuprofen 200mg</span>
-                                        <span style="color:var(--text-muted);font-weight:800;">5.6k</span>
-                                    </div>
-                                    <div class="bar"><span
-                                            style="width:48%; background: linear-gradient(90deg, #f59e0b, #f472b6);"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="product-row">
-                                <div>
-                                    <div style="display:flex;justify-content:space-between;gap:12px;">
-                                        <span style="font-weight:700;color:var(--ink);">Hep-B Vaccine 0.5ml</span>
-                                        <span style="color:var(--text-muted);font-weight:800;">3.2k</span>
-                                    </div>
-                                    <div class="bar"><span
-                                            style="width:32%; background: linear-gradient(90deg, #a78bfa, #22d3ee);"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Verifications by region</h3>
-                                <span class="tag">7 regions active</span>
-                            </div>
-                            <div class="region-map">
-                                <div class="region-pin" style="left: 8%; top: 30%;">
-                                    <div class="dot" style="width:18px;height:18px;background:#22d3ee;"></div>
-                                    <div class="label">Asia · 18.4k</div>
-                                </div>
-                                <div class="region-pin" style="left: 20%; top: 44%;">
-                                    <div class="dot" style="width:28px;height:28px;background:#7c3aed;"></div>
-                                    <div class="label">EMEA · 14.2k</div>
-                                </div>
-                                <div class="region-pin" style="left: 46%; top: 22%;">
-                                    <div class="dot" style="width:22px;height:22px;background:#10b981;"></div>
-                                    <div class="label">Americas · 12.8k</div>
-                                </div>
-                                <div class="region-pin" style="left: 64%; top: 52%;">
-                                    <div class="dot" style="width:34px;height:34px;background:#f472b6;"></div>
-                                    <div class="label">Africa · 2.8k</div>
-                                </div>
-                                <svg viewBox="0 0 680 220" aria-hidden="true"
-                                    style="position:absolute;inset:0;width:100%;height:100%;opacity:.35;">
-                                    <defs>
-                                        <pattern id="dots" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
-                                            <circle cx="2" cy="2" r="1" fill="#94a3b8"></circle>
-                                        </pattern>
-                                    </defs>
-                                    <rect width="680" height="220" fill="url(#dots)"></rect>
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div class="card event-list">
-                            <div class="card-header">
-                                <h3>Recent chain events</h3>
-                                <span class="tag">Live</span>
-                            </div>
-
-                            <div class="event-item">
-                                <div class="event-icon">✓</div>
-                                <div>
-                                    <h4>Batch DWT-2026-1247 verified</h4>
-                                    <p>tx 0x4a2b…d2b9 · 12s ago</p>
-                                </div>
-                            </div>
-
-                            <div class="event-item">
-                                <div class="event-icon"
-                                    style="background: rgba(124, 58, 237, 0.12); color: var(--accent-purple);">+
-                                </div>
-                                <div>
-                                    <h4>New batch minted DWT-2026-1252</h4>
-                                    <p>tx 0x9e0c…71fa · 2 min ago</p>
-                                </div>
-                            </div>
-
-                            <div class="event-item">
-                                <div class="event-icon"
-                                    style="background: rgba(239, 68, 68, 0.12); color: var(--accent-red);">!</div>
-                                <div>
-                                    <h4>Counterfeit attempt blocked · Lagos</h4>
-                                    <p>scan 0xff31…8a02 · 6 min ago</p>
-                                </div>
-                            </div>
-
-                            <div class="event-item">
-                                <div class="event-icon"
-                                    style="background: rgba(245, 158, 11, 0.16); color: var(--accent-orange);">→
-                                </div>
-                                <div>
-                                    <h4>Custody transferred · Mumbai → Nairobi</h4>
-                                    <p>tx 0xb481…2cc7 · 11 min ago</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="about-hero">
-                        <h2 style="margin: 0 0 12px;">The problem we're solving</h2>
-                        <div class="about-stats">
-                            <div class="about-stat">
-                                <div class="about-stat-number">500K</div>
-                                <div class="about-stat-label">Deaths per year in sub-Saharan Africa from falsified
-                                    medicines</div>
-                                <div class="about-stat-source">UNODC</div>
-                            </div>
-                            <div class="about-stat">
-                                <div class="about-stat-number">1 in 10</div>
-                                <div class="about-stat-label">Medical products in developing countries are substandard
-                                    or falsified</div>
-                                <div class="about-stat-source">WHO</div>
-                            </div>
-                            <div class="about-stat">
-                                <div class="about-stat-number">70%+</div>
-                                <div class="about-stat-label">Of medicines in Kenya are imported through fragmented
-                                    supply chains</div>
-                                <div class="about-stat-source">PPB Kenya</div>
-                            </div>
-                            <div class="about-stat">
-                                <div class="about-stat-number">24/7</div>
-                                <div class="about-stat-label">Consumer access to on-chain verification anytime, anywhere</div>
-                                <div class="about-stat-source">DawaTrace</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="about-section">
-                        <h3>How DawaTrace works</h3>
-                        <div class="flow-diagram">
-                            <div class="flow-step">
-                                <div class="flow-icon">🏭</div>
-                                <div class="flow-title">Manufacturer</div>
-                                <div class="flow-desc">Registers drug batch on blockchain with unique ID</div>
-                            </div>
-                            <div class="flow-arrow">→</div>
-                            <div class="flow-step">
-                                <div class="flow-icon">🚛</div>
-                                <div class="flow-title">Distributor</div>
-                                <div class="flow-desc">Confirms receipt, transfers custody on-chain</div>
-                            </div>
-                            <div class="flow-arrow">→</div>
-                            <div class="flow-step">
-                                <div class="flow-icon">🏥</div>
-                                <div class="flow-title">Pharmacy</div>
-                                <div class="flow-desc">Receives batch, custody recorded immutably</div>
-                            </div>
-                            <div class="flow-arrow">→</div>
-                            <div class="flow-step highlight">
-                                <div class="flow-icon">📱</div>
-                                <div class="flow-title">Consumer</div>
-                                <div class="flow-desc">Scans QR code → instant verification ✓ or ✗</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="about-section">
-                        <h3>Built with</h3>
-                        <div class="tech-tags">
-                            <span class="tech-tag">Solidity</span>
-                            <span class="tech-tag">Polygon</span>
-                            <span class="tech-tag">Hardhat</span>
-                            <span class="tech-tag">Ethers.js</span>
-                            <span class="tech-tag">QR Code</span>
-                            <span class="tech-tag">Mobile-First</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <div class="mobile-tabbar">
-        <a href="#verify" class="nav-link active" data-page="verify">Verify</a>
-        <a href="#dashboard" class="nav-link" data-page="dashboard">Dashboard</a>
-        <a href="#track" class="nav-link" data-page="track">Trace</a>
-        <a href="#about" class="nav-link" data-page="about">Analytics</a>
-    </div>
-
-    <div class="modal hidden" id="qrModal">
-        <div class="modal-backdrop" onclick="closeModal()"></div>
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()">✕</button>
-            <h3>QR Code for Batch</h3>
-            <div id="qrCodeDisplay" class="qr-display"></div>
-            <p class="qr-batch-id" id="qrBatchIdDisplay"></p>
-            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        <div style="position:absolute;left:80px;top:170px;width:520px;z-index:10">
+          <span class="tag" style="background:rgba(255,255,255,.7);backdrop-filter:blur(10px);color:#7C3AED;border:1px solid rgba(124,58,237,.2)">
+            <span style="width:7px;height:7px;border-radius:50%;background:#10B981;display:inline-block"></span>
+            Blockchain-verified · Trusted by 240+ manufacturers
+          </span>
         </div>
-    </div>
 
-    <div class="toast hidden" id="toast">
-        <span id="toastMessage"></span>
-    </div>
+        <h1 class="h-display" style="position:absolute;left:80px;top:215px;width:680px;font-size:72px;line-height:1.08;margin:0;z-index:10;padding-bottom:8px">
+          Verify Authenticity,<br>
+          <span style="background:linear-gradient(90deg,#22D3EE,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;padding-bottom:6px">Track Every Step.</span>
+        </h1>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script src="app.js"></script>
+        <p style="position:absolute;left:80px;top:460px;width:560px;font-size:19px;line-height:1.55;color:#4A5670;margin:0;z-index:10">
+          The decentralized medicine verification layer for consumers, manufacturers, and pharmacies.
+          Scan a QR code or enter a batch ID to confirm authenticity in seconds.
+        </p>
+
+        <div style="position:absolute;left:80px;top:550px;display:flex;gap:16px;z-index:10">
+          <button type="button" class="btn-grad" style="padding:18px 36px;font-size:16px" data-page="verify">Start Verifying</button>
+          <button type="button" class="btn-ghost" style="padding:17px 32px;font-size:16px" data-page="dashboard">For Manufacturers</button>
+        </div>
+
+        <div style="position:absolute;left:80px;top:740px;width:680px;display:flex;justify-content:space-between;align-items:center;z-index:10">
+          <div style="display:flex;align-items:center;gap:10px;color:#3A4761;font-weight:600;font-size:15px">
+            <span style="width:36px;height:36px;border-radius:10px;background:rgba(34,211,238,.12);display:inline-flex;align-items:center;justify-content:center;color:#0891B2;font-size:18px">◉</span>
+            Blockchain Certified
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;color:#3A4761;font-weight:600;font-size:15px">
+            <span style="width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,.12);display:inline-flex;align-items:center;justify-content:center;color:#7C3AED;font-size:18px">🛡</span>
+            Secure Verification
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;color:#3A4761;font-weight:600;font-size:15px">
+            <span style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,.12);display:inline-flex;align-items:center;justify-content:center;color:#10B981;font-size:18px">🌐</span>
+            WHO-Compliant
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;color:#3A4761;font-weight:600;font-size:15px">
+            <span style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,.12);display:inline-flex;align-items:center;justify-content:center;color:#F59E0B;font-size:18px">🌿</span>
+            Mobile-First
+          </div>
+        </div>
+
+        <div style="position:absolute;left:880px;top:160px;width:360px;height:640px;z-index:5;border-radius:46px;background:linear-gradient(160deg,#1a1a2e,#0f0f1c);box-shadow:0 40px 80px rgba(15,27,45,.25),inset 0 0 0 2px rgba(255,255,255,.08);padding:14px">
+          <div style="position:relative;width:100%;height:100%;border-radius:34px;background:linear-gradient(160deg,#F0F4FF 0%,#E9F7F2 100%);overflow:hidden">
+            <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%);width:90px;height:24px;border-radius:14px;background:#0a0a14"></div>
+            <div style="position:absolute;left:50%;top:130px;transform:translateX(-50%);width:200px;height:200px;background:#fff;border-radius:18px;box-shadow:0 18px 36px rgba(15,27,45,.12);padding:14px">
+              <div style="width:100%;height:100%;background:conic-gradient(from 0deg at 18% 18%,#111 0 25%,transparent 0 100%),conic-gradient(from 0deg at 82% 18%,#111 0 25%,transparent 0 100%),conic-gradient(from 0deg at 18% 82%,#111 0 25%,transparent 0 100%),repeating-conic-gradient(#111 0 25%,#fff 0 50%);background-size:50px 50px,50px 50px,50px 50px,14px 14px;background-position:0 0,100% 0,0 100%,0 0;background-repeat:no-repeat,no-repeat,no-repeat,repeat;border-radius:6px;position:relative">
+                <div style="position:absolute;left:0;right:0;top:50%;height:3px;background:linear-gradient(90deg,transparent,#22D3EE,transparent);box-shadow:0 0 12px #22D3EE"></div>
+              </div>
+            </div>
+            <div style="position:absolute;left:0;right:0;top:360px;text-align:center;font-family:'Sora',sans-serif;font-weight:700;color:#0F1B2D;font-size:18px">Scan to Verify</div>
+            <div style="position:absolute;left:0;right:0;top:392px;text-align:center;color:#6B7793;font-size:12px">Align QR within the frame</div>
+            <div style="position:absolute;left:24px;right:24px;bottom:30px;background:#fff;border-radius:16px;padding:14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 20px rgba(15,27,45,.08)">
+              <div style="width:34px;height:34px;border-radius:10px;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">✓</div>
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#0F1B2D">Verified on-chain</div>
+                <div style="font-size:11px;color:#6B7793">tx 0x4a…d2b9 · Polygon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:780px;top:230px;z-index:8;background:#fff;border-radius:14px;padding:12px 16px;box-shadow:0 14px 30px rgba(15,27,45,.12);display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:50%;background:rgba(34,211,238,.15);display:flex;align-items:center;justify-content:center;color:#0891B2">◉</div>
+          <div>
+            <div style="font-size:11px;color:#6B7793">Verification</div>
+            <div style="font-weight:700;font-size:13px;color:#0F1B2D">Authentic ✓</div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:1180px;top:300px;z-index:8;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 14px 30px rgba(15,27,45,.12);display:flex;align-items:center;gap:8px">
+          <div style="width:24px;height:24px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">✓</div>
+          <div style="font-size:12px;color:#3A4761;line-height:1.3">
+            <div style="font-weight:700">Block #18,394</div>
+            <div style="color:#6B7793">2 sec ago</div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:760px;top:570px;z-index:8;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 14px 30px rgba(15,27,45,.12);display:flex;align-items:center;gap:10px;max-width:240px">
+          <div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✓</div>
+          <div style="font-size:12px;color:#3A4761;line-height:1.3">
+            <div style="font-weight:700;color:#0F1B2D">Blockchain</div>
+            <div style="color:#6B7793">hash 0x27a…f81b9</div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:1160px;top:640px;z-index:8;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 14px 30px rgba(15,27,45,.12);display:flex;align-items:center;gap:14px;font-size:11px;color:#3A4761;font-weight:600">
+          <span>📦 Flow</span><span style="color:#7C3AED">→</span><span>🔗 Supply</span><span style="color:#7C3AED">→</span><span>☁ Chain</span>
+        </div>
+      </section>
+
+      <!-- 02 Connect Wallet -->
+      <section class="page hidden" id="page-connect" style="background:#FAFBFE;">
+        <div style="position:absolute;left:80px;top:36px;z-index:10">
+          <div class="brand"><div class="brand-logo"></div><span>DawaTrace</span></div>
+        </div>
+        <div style="position:absolute;right:80px;top:46px;color:#3A4761;font-size:14px;z-index:10">
+          Need help? <span style="color:#7C3AED;font-weight:600">View docs →</span>
+        </div>
+
+        <div style="position:absolute;left:120px;top:170px;width:480px;z-index:10">
+          <span class="kicker">Step 1 of 2</span>
+        </div>
+        <h1 class="h-display" style="position:absolute;left:120px;top:205px;width:520px;font-size:60px;line-height:1.05;margin:0;z-index:10;padding-bottom:8px">
+          Connect your<br>wallet to begin.
+        </h1>
+        <p style="position:absolute;left:120px;top:415px;width:480px;font-size:17px;line-height:1.6;color:#4A5670;margin:0;z-index:10">
+          Your wallet is your identity on DawaTrace. We never store keys. Every verification and batch event is signed by you and written to the chain.
+        </p>
+
+        <div style="position:absolute;left:120px;top:560px;width:480px;z-index:10;font-size:15px;color:#1E2A44;line-height:1">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+            <span style="width:34px;height:34px;border-radius:10px;background:rgba(34,211,238,.15);color:#0891B2;display:inline-flex;align-items:center;justify-content:center;font-weight:700">◉</span>
+            <span><b>Non-custodial.</b> <span style="color:#6B7793">Keys never leave your device.</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+            <span style="width:34px;height:34px;border-radius:10px;background:rgba(16,185,129,.15);color:#10B981;display:inline-flex;align-items:center;justify-content:center;font-weight:700">✓</span>
+            <span><b>Polygon + Ethereum.</b> <span style="color:#6B7793">Low-fee verifications, every time.</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="width:34px;height:34px;border-radius:10px;background:rgba(124,58,237,.15);color:#7C3AED;display:inline-flex;align-items:center;justify-content:center;font-weight:700">🛡</span>
+            <span><b>Audited contracts.</b> <span style="color:#6B7793">Reviewed by CertiK & Quantstamp.</span></span>
+          </div>
+        </div>
+
+        <div class="glass" style="position:absolute;right:120px;top:170px;width:520px;height:610px;padding:38px;z-index:10;background:rgba(255,255,255,.85)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;color:#0F1B2D">Choose a wallet</div>
+            <span class="tag" style="background:#E9F7F2;color:#10B981">● Secure</span>
+          </div>
+          <p style="margin:0 0 26px 0;color:#6B7793;font-size:14px">Select a provider to sign in. New to wallets? <span style="color:#7C3AED;font-weight:600">Learn more</span></p>
+
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:#fff;border:1.5px solid #7C3AED;box-shadow:0 8px 20px rgba(124,58,237,.12);cursor:pointer">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#F6851B,#E2761B);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">🦊</div>
+              <div style="flex:1">
+                <div style="font-weight:700;color:#0F1B2D">MetaMask</div>
+                <div style="font-size:12px;color:#6B7793">Browser extension · Most popular</div>
+              </div>
+              <span class="tag" style="background:#EDE7FF;color:#7C3AED">Recommended</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:#fff;border:1px solid #E6EAF2;cursor:pointer">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#3B99FC,#1A6FE8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px">W</div>
+              <div style="flex:1">
+                <div style="font-weight:700;color:#0F1B2D">WalletConnect</div>
+                <div style="font-size:12px;color:#6B7793">Scan QR with any mobile wallet</div>
+              </div>
+              <span style="color:#9CA3AF">›</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:#fff;border:1px solid #E6EAF2;cursor:pointer">
+              <div style="width:44px;height:44px;border-radius:12px;background:#0F1B2D;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px">C</div>
+              <div style="flex:1">
+                <div style="font-weight:700;color:#0F1B2D">Coinbase Wallet</div>
+                <div style="font-size:12px;color:#6B7793">Self-custody by Coinbase</div>
+              </div>
+              <span style="color:#9CA3AF">›</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:#fff;border:1px solid #E6EAF2;cursor:pointer">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#A8F0DC,#22D3EE);display:flex;align-items:center;justify-content:center;color:#0F1B2D;font-weight:800;font-size:18px">T</div>
+              <div style="flex:1">
+                <div style="font-weight:700;color:#0F1B2D">Trust Wallet</div>
+                <div style="font-size:12px;color:#6B7793">Mobile-first multi-chain wallet</div>
+              </div>
+              <span style="color:#9CA3AF">›</span>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;padding:14px 16px;border-radius:12px;background:#F6F8FC;display:flex;align-items:center;gap:10px;font-size:12px;color:#3A4761">
+            <span style="font-size:16px">🔒</span>
+            By connecting, you agree to DawaTrace's <span style="color:#7C3AED;font-weight:600">Terms</span> & <span style="color:#7C3AED;font-weight:600">Privacy</span>.
+          </div>
+
+          <div style="margin-top:18px">
+            <button type="button" id="connectWallet" class="wallet-btn" style="width:100%;justify-content:center;padding:14px 20px;font-size:14px">
+              <span class="wallet-dot"></span>
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 Verify -->
+      <section class="page hidden" id="page-verify" style="background:#FAFBFE;">
+        <div style="position:absolute;left:0;top:0;width:260px;height:900px;background:rgba(255,255,255,.55);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand"><div class="brand-logo"></div><span>DawaTrace</span></div>
+        </div>
+        <div style="position:absolute;left:30px;top:100px;width:200px;z-index:10;font-family:'Sora',sans-serif;font-weight:700;color:#0F1B2D;font-size:16px">Recent Scans</div>
+        <div style="position:absolute;left:24px;top:140px;width:212px;display:flex;flex-direction:column;gap:10px;z-index:10">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#fff;border:1px solid #E6EAF2">
+            <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);display:flex;align-items:center;justify-content:center;font-size:18px">💊</div>
+            <div><div style="font-weight:700;font-size:13px;color:#0F1B2D">Amoxicillin 500mg</div><div style="font-size:11px;color:#6B7793">Verified · Jan 23, 2026</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#fff;border:1px solid #E6EAF2">
+            <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);display:flex;align-items:center;justify-content:center;font-size:18px">💉</div>
+            <div><div style="font-weight:700;font-size:13px;color:#0F1B2D">Insulin Glargine</div><div style="font-size:11px;color:#6B7793">Verified · Dec 27, 2025</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#fff;border:1px solid #E6EAF2">
+            <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#A8F0DC,#B8E4FF);display:flex;align-items:center;justify-content:center;font-size:18px">🧴</div>
+            <div><div style="font-weight:700;font-size:13px;color:#0F1B2D">Paracetamol Syrup</div><div style="font-size:11px;color:#6B7793">Verified · Jun 24, 2025</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.6);border:1px dashed #E6EAF2">
+            <div style="width:40px;height:40px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;font-size:18px">⚠</div>
+            <div><div style="font-weight:700;font-size:13px;color:#EF4444">Flagged item</div><div style="font-size:11px;color:#6B7793">Counterfeit · May 4</div></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:24px;bottom:30px;width:212px;padding:12px;border-radius:12px;background:#fff;border:1px solid #E6EAF2;display:flex;align-items:center;gap:10px;z-index:10">
+          <div class="avatar" style="width:32px;height:32px"></div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:12px;color:#0F1B2D">0x4a8c…d2b9</div>
+            <div style="font-size:10px;color:#10B981">● Connected</div>
+          </div>
+        </div>
+
+        <h1 class="h-display" style="position:absolute;left:300px;top:46px;font-size:38px;line-height:1.1;margin:0;z-index:10;padding-bottom:6px">
+          Verify Product
+        </h1>
+        <div style="position:absolute;left:300px;top:100px;font-size:14px;color:#6B7793;z-index:10">
+          <span>Home</span> <span style="margin:0 8px;color:#CBD5E1">›</span> <span style="color:#0F1B2D;font-weight:600">Product Verification</span>
+        </div>
+
+        <div class="card" style="position:absolute;left:300px;top:170px;width:500px;height:380px;padding:30px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0;font-family:'Sora',sans-serif;font-size:24px;background:linear-gradient(90deg,#22D3EE,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Scan QR Code</h2>
+            <span class="tag" style="background:#E9F7F2;color:#10B981">● Camera ready</span>
+          </div>
+          <p style="margin:0 0 18px 0;font-size:13px;color:#6B7793">Use your device camera for instant on-chain verification.</p>
+
+          <div class="verify-box">
+            <div class="verify-tabs">
+              <button type="button" class="verify-tab active" data-tab="scan">📷 Scan QR Code</button>
+              <button type="button" class="verify-tab" data-tab="manual">⌨ Enter Batch ID</button>
+            </div>
+
+            <div class="verify-content" id="tab-scan">
+              <div class="qr-reader">
+                <div class="qr-placeholder">
+                  <div class="qr-frame"></div>
+                  <p style="margin:0">Click to start camera</p>
+                </div>
+              </div>
+              <div style="margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:space-between">
+                <button type="button" class="btn btn-primary btn-lg" id="startScan">📷 Start Scanner</button>
+                <span class="subtle" style="font-size:12px">Align the code inside the frame.</span>
+              </div>
+            </div>
+
+            <div class="verify-content hidden" id="tab-manual">
+              <div class="input-group">
+                <input type="text" id="batchIdInput" placeholder="Enter Batch ID (0x...)" class="input-field">
+                <button type="button" class="btn btn-primary" id="verifyBtn">🔍 Verify</button>
+              </div>
+              <div style="margin-top:14px;font-size:12px;color:#6B7793">Manual verification works best when you paste the batch reference from the QR label.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:820px;top:170px;width:500px;height:380px;padding:30px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0;font-family:'Sora',sans-serif;font-size:24px;background:linear-gradient(90deg,#22D3EE,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Upload QR Image</h2>
+            <span class="tag" style="background:#EDE7FF;color:#7C3AED">PNG · JPG · WebP</span>
+          </div>
+          <p style="margin:0 0 18px 0;font-size:13px;color:#6B7793">No camera? Upload a photo of the QR label and we’ll read it locally.</p>
+
+          <div style="width:100%;height:200px;border-radius:14px;background:#F4F0FF;border:2px dashed #C4B5FD;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+            <div style="width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(124,58,237,.15);font-size:24px;color:#7C3AED">⇪</div>
+            <div style="font-weight:600;color:#0F1B2D;font-size:15px">Drag and drop or click to upload</div>
+            <div style="font-size:12px;color:#6B7793">Max 5MB · End-to-end encrypted</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-top:20px;padding:12px 14px;border-radius:12px;background:#F6F8FC;font-size:12px;color:#3A4761">
+            <span>🛡</span> Files are processed locally and never stored.
+          </div>
+
+          <input type="file" id="qrFileInput" accept="image/*" hidden onchange="handleQRFile(event)">
+          <div style="margin-top:18px">
+            <button type="button" class="btn btn-secondary btn-full" onclick="document.getElementById('qrFileInput').click()">Upload QR Image</button>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:70px;width:180px;height:180px;z-index:10">
+          <span style="position:absolute;left:-8px;top:-8px;width:54px;height:54px;border-left:6px solid #F59E0B;border-top:6px solid #F59E0B;border-radius:12px 0 0 0"></span>
+          <span style="position:absolute;right:-8px;top:-8px;width:54px;height:54px;border-right:6px solid #22D3EE;border-top:6px solid #22D3EE;border-radius:0 12px 0 0"></span>
+          <span style="position:absolute;left:-8px;bottom:-8px;width:54px;height:54px;border-left:6px solid #7C3AED;border-bottom:6px solid #7C3AED;border-radius:0 0 0 12px"></span>
+          <span style="position:absolute;right:-8px;bottom:-8px;width:54px;height:54px;border-right:6px solid #F472B6;border-bottom:6px solid #F472B6;border-radius:0 0 12px 0"></span>
+          <div style="width:100%;height:100%;background:conic-gradient(from 0deg at 18% 18%,#111 0 25%,transparent 0 100%),conic-gradient(from 0deg at 82% 18%,#111 0 25%,transparent 0 100%),conic-gradient(from 0deg at 18% 82%,#111 0 25%,transparent 0 100%),repeating-conic-gradient(#111 0 25%,#fff 0 50%);background-size:40px 40px,40px 40px,40px 40px,12px 12px;background-position:0 0,100% 0,0 100%,0 0;background-repeat:no-repeat,no-repeat,no-repeat,repeat;border-radius:6px;position:relative">
+            <div style="position:absolute;left:0;right:0;top:50%;height:14px;background:linear-gradient(90deg,rgba(34,211,238,.0),rgba(34,211,238,.5),rgba(124,58,237,.5),rgba(34,211,238,.0));"></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:280px;right:80px;bottom:24px;text-align:center;font-size:13px;color:#6B7793;z-index:10">
+          Powered by <span style="color:#7C3AED;font-weight:600">Polygon zkEVM</span> · Average verification: <span style="color:#0F1B2D;font-weight:600">1.8s</span>
+        </div>
+      </section>
+
+      <!-- 04 Verification Result -->
+      <section class="page hidden" id="page-result" style="background:#FAFBFE;">
+        <div style="position:absolute;left:80px;top:36px;width:1280px;display:flex;align-items:center;justify-content:space-between;z-index:10">
+          <div class="brand"><div class="brand-logo"></div>DawaTrace</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span class="tag" style="background:#fff">◉ Polygon · Block #18,394,201</span>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #E6EAF2">
+              <div class="avatar" style="width:26px;height:26px"></div>
+              <span style="font-size:13px;font-weight:600;color:#0F1B2D">0x4a8c…d2b9</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="resultBanner" style="position:absolute;left:80px;top:120px;width:1280px;height:200px;border-radius:24px;background:linear-gradient(135deg,#10B981 0%,#22D3EE 60%,#7C3AED 100%);overflow:hidden;z-index:5;box-shadow:0 20px 50px rgba(16,185,129,.25)">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.18),transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,255,255,.14),transparent 40%)"></div>
+        </div>
+
+        <div style="position:absolute;left:120px;top:160px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;z-index:10;box-shadow:0 16px 40px rgba(0,0,0,.15)">
+          <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#10B981,#22D3EE);display:flex;align-items:center;justify-content:center;color:#fff;font-size:42px;font-weight:800">✓</div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:160px;width:700px;z-index:10;color:#fff">
+          <div id="resultBannerLabel" style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:700">VERIFICATION SUCCESSFUL</div>
+          <h1 id="resultBannerTitle" class="h-display" style="font-size:46px;margin:6px 0 4px 0;color:#fff">This product is authentic.</h1>
+          <div id="resultBannerSub" style="font-size:15px;opacity:.92">Confirmed on-chain · ref <span style="font-family:monospace">0x4a2b…d2b9f81b9</span></div>
+        </div>
+
+        <div style="position:absolute;right:120px;top:200px;display:flex;gap:10px;z-index:10">
+          <button type="button" class="btn-soft" style="background:rgba(255,255,255,.2);color:#fff">↧ Download proof</button>
+          <button type="button" class="btn-soft" style="background:rgba(255,255,255,.2);color:#fff">↗ View on explorer</button>
+        </div>
+
+        <div id="resultSection" style="position:absolute;left:0;top:360px;width:1440px;height:540px;z-index:10">
+          <div id="resultCard" class="card result-card authentic" style="position:absolute;left:80px;top:0;width:520px;height:480px;padding:30px;z-index:10"></div>
+
+          <div class="card" style="position:absolute;left:620px;top:0;width:740px;height:480px;padding:30px;z-index:10">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+              <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:20px;color:#0F1B2D">Journey at a glance</h3>
+              <button type="button" class="btn-soft" style="font-size:12px" onclick="trackFromResult(lastVerifiedBatchId)">View full trace →</button>
+            </div>
+            <div id="resultJourneyContent" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div style="flex:1;text-align:center">
+                <div style="width:48px;height:48px;border-radius:14px;background:#B8E4FF;display:inline-flex;align-items:center;justify-content:center;font-size:20px;color:#0F1B2D">🏭</div>
+                <div style="font-size:13px;font-weight:700;margin-top:8px;color:#0F1B2D">Manufactured</div>
+                <div style="font-size:11px;color:#6B7793">Jan 15</div>
+              </div>
+              <div style="height:48px;display:flex;align-items:center;color:#CBD5E1;font-size:18px">›</div>
+              <div style="flex:1;text-align:center">
+                <div style="width:48px;height:48px;border-radius:14px;background:#FFC9D6;display:inline-flex;align-items:center;justify-content:center;font-size:20px">🛡</div>
+                <div style="font-size:13px;font-weight:700;margin-top:8px;color:#0F1B2D">QC Passed</div>
+                <div style="font-size:11px;color:#6B7793">Jan 18</div>
+              </div>
+              <div style="height:48px;display:flex;align-items:center;color:#CBD5E1;font-size:18px">›</div>
+              <div style="flex:1;text-align:center">
+                <div style="width:48px;height:48px;border-radius:14px;background:#FFE08A;display:inline-flex;align-items:center;justify-content:center;font-size:20px">📦</div>
+                <div style="font-size:13px;font-weight:700;margin-top:8px;color:#0F1B2D">Warehoused</div>
+                <div style="font-size:11px;color:#6B7793">Jan 22</div>
+              </div>
+              <div style="height:48px;display:flex;align-items:center;color:#CBD5E1;font-size:18px">›</div>
+              <div style="flex:1;text-align:center">
+                <div style="width:48px;height:48px;border-radius:14px;background:#D8C8FF;display:inline-flex;align-items:center;justify-content:center;font-size:20px">🚢</div>
+                <div style="font-size:13px;font-weight:700;margin-top:8px;color:#0F1B2D">In Transit</div>
+                <div style="font-size:11px;color:#6B7793">Jan 25</div>
+              </div>
+              <div style="height:48px;display:flex;align-items:center;color:#CBD5E1;font-size:18px">›</div>
+              <div style="flex:1;text-align:center">
+                <div style="width:48px;height:48px;border-radius:14px;background:#A8F0DC;display:inline-flex;align-items:center;justify-content:center;font-size:20px">✓</div>
+                <div style="font-size:13px;font-weight:700;margin-top:8px;color:#10B981">Delivered</div>
+                <div style="font-size:11px;color:#6B7793">Jan 30</div>
+              </div>
+            </div>
+
+            <div style="margin-top:24px;height:230px;border-radius:14px;background:linear-gradient(135deg,#E8FAFE 0%,#F4F0FF 100%);position:relative;overflow:hidden">
+              <svg viewBox="0 0 700 230" style="position:absolute;inset:0;width:100%;height:100%;opacity:.5">
+                <defs>
+                  <pattern id="dot" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+                    <circle cx="2" cy="2" r="1.2" fill="#94A3B8"></circle>
+                  </pattern>
+                </defs>
+                <rect width="700" height="230" fill="url(#dot)"></rect>
+              </svg>
+              <svg viewBox="0 0 700 230" style="position:absolute;inset:0;width:100%;height:100%">
+                <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs>
+                <path d="M 110 80 Q 220 30 320 100 T 540 150" stroke="url(#g)" stroke-width="3" fill="none" stroke-dasharray="6 6"></path>
+              </svg>
+              <div style="position:absolute;left:96px;top:60px;display:flex;flex-direction:column;align-items:center">
+                <div style="width:30px;height:30px;border-radius:50%;background:#22D3EE;border:3px solid #fff;box-shadow:0 4px 10px rgba(34,211,238,.45)"></div>
+                <div style="margin-top:6px;background:#fff;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#0F1B2D;box-shadow:0 4px 10px rgba(0,0,0,.06)">Guangzhou</div>
+              </div>
+              <div style="position:absolute;left:300px;top:80px;display:flex;flex-direction:column;align-items:center">
+                <div style="width:24px;height:24px;border-radius:50%;background:#F59E0B;border:3px solid #fff;box-shadow:0 4px 10px rgba(245,158,11,.45)"></div>
+                <div style="margin-top:4px;background:#fff;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#0F1B2D;box-shadow:0 4px 10px rgba(0,0,0,.06)">Singapore</div>
+              </div>
+              <div style="position:absolute;left:520px;top:130px;display:flex;flex-direction:column;align-items:center">
+                <div style="width:30px;height:30px;border-radius:50%;background:#10B981;border:3px solid #fff;box-shadow:0 4px 10px rgba(16,185,129,.45)"></div>
+                <div style="margin-top:6px;background:#fff;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#0F1B2D;box-shadow:0 4px 10px rgba(0,0,0,.06)">San Francisco</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 Supply Chain Trace -->
+      <section class="page hidden" id="page-track" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:520px;height:520px;left:-140px;top:-200px;border-radius:50%;background:radial-gradient(circle,#A8F0DC 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+          <div style="position:absolute;width:520px;height:520px;right:-140px;bottom:-200px;border-radius:50%;background:radial-gradient(circle,#D8C8FF 0%,transparent 70%);filter:blur(90px);opacity:.55"></div>
+        </div>
+
+        <div style="position:absolute;left:80px;top:36px;width:1280px;display:flex;justify-content:space-between;align-items:center;z-index:10">
+          <div class="brand"><div class="brand-logo"></div>DawaTrace</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <span class="tag" style="background:#fff">⟡ Live tracking</span>
+            <button type="button" class="btn-soft">↧ Export</button>
+            <button type="button" class="btn-soft">✕ Share</button>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;top:110px;text-align:center;z-index:10">
+          <div style="font-family:'Sora',sans-serif;font-weight:600;color:#7C3AED;font-size:18px;letter-spacing:.04em">DawaTrace</div>
+        </div>
+        <h1 class="h-display" style="position:absolute;left:0;right:0;top:138px;text-align:center;font-size:56px;line-height:1.1;margin:0;z-index:10;padding-bottom:6px">
+          Supply Chain Trace
+        </h1>
+        <div style="position:absolute;left:0;right:0;top:215px;text-align:center;font-size:22px;color:#3A4761;font-weight:600;z-index:10">
+          Batch <span style="font-family:monospace">#DWT-2026-1247</span> <span style="color:#10B981;margin-left:6px">✓</span>
+        </div>
+
+        <div style="position:absolute;left:80px;top:290px;width:1280px;z-index:10">
+          <div class="card" style="padding:18px 22px;margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="text" id="trackBatchId" placeholder="Enter Batch ID (0x...)" class="input-field" style="flex:1">
+              <button type="button" class="btn btn-primary" id="trackBtn">Track</button>
+            </div>
+          </div>
+
+          <div id="custodyTimeline" class="card" style="padding:22px 28px;min-height:470px">
+            <div class="empty-state">Enter a Batch ID to view its journey</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06 Dashboard -->
+      <section class="page hidden" id="page-dashboard" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:230px;height:900px;background:rgba(255,255,255,.6);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand brand--sidebar"><div class="brand-logo"></div>DawaTrace</div>
+        </div>
+        <div style="position:absolute;left:18px;top:120px;width:200px;z-index:10">
+          <div class="nav-item active" data-page="dashboard"><span class="ic">▦</span> Dashboard</div>
+          <div class="nav-item" data-page="products"><span class="ic">▭</span> Products</div>
+          <div class="nav-item" data-page="batches"><span class="ic">⎙</span> Batch Management</div>
+          <div class="nav-item" data-page="analytics"><span class="ic">📈</span> Analytics</div>
+          <div class="nav-item"><span class="ic">⚙</span> Settings</div>
+          <div class="nav-item"><span class="ic">?</span> Support</div>
+        </div>
+
+        <h1 class="h-display" style="position:absolute;left:270px;top:36px;font-size:28px;margin:0;z-index:10">Dashboard</h1>
+        <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">Welcome back, MediCore Labs · Tuesday, Jan 30</div>
+        <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:14px;z-index:10">
+          <div style="position:relative;width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid #E6EAF2;display:flex;align-items:center;justify-content:center;font-size:16px">🔔
+            <span style="position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%;background:#EF4444;border:2px solid #fff"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-radius:999px;background:#fff;border:1px solid #E6EAF2">
+            <div class="avatar" style="width:32px;height:32px"></div>
+            <div style="font-size:13px"><div style="font-weight:700;color:#0F1B2D;line-height:1.1">Sign in</div><div style="color:#6B7793;font-size:11px">Manufacturer</div></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:115px;width:1130px;border-radius:24px;background:rgba(255,255,255,.55);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.6);box-shadow:0 18px 50px rgba(15,27,45,.08);overflow:hidden;z-index:10">
+          <div style="background:linear-gradient(90deg,#22D3EE 0%,#A78BFA 50%,#F472B6 100%);padding:16px 28px;display:flex;align-items:center;justify-content:space-between">
+            <div style="color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:20px">Add New Product</div>
+            <div style="display:flex;gap:8px">
+              <span class="tag" style="background:rgba(255,255,255,.25);color:#fff">◉ Polygon</span>
+              <span class="tag" style="background:rgba(255,255,255,.25);color:#fff">Auto-mint QR</span>
+            </div>
+          </div>
+          <div style="padding:18px 28px 20px 28px">
+            <form id="registerForm" class="form">
+              <input type="hidden" id="ipfsHash" value="">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 30px">
+                <div class="form-group">
+                  <label for="drugName" style="margin-bottom:6px">Product Name</label>
+                  <input id="drugName" value="Amoxicillin 500mg" style="padding:11px 14px">
+                </div>
+                <div class="form-group">
+                  <label for="batchNumber" style="margin-bottom:6px">Batch Number</label>
+                  <input id="batchNumber" value="DWT-2026-1247" style="padding:11px 14px">
+                </div>
+                <div class="form-group">
+                  <label style="margin-bottom:6px">Manufacturing Date</label>
+                  <input value="2026-01-15  📅" readonly style="padding:11px 14px">
+                </div>
+                <div class="form-group">
+                  <label for="expiryDate" style="margin-bottom:6px">Expiry Date</label>
+                  <input type="date" id="expiryDate" value="2028-01-15" style="padding:11px 14px">
+                </div>
+                <div class="form-group">
+                  <label style="margin-bottom:6px">SKU</label>
+                  <input value="AMX-500-C24" readonly style="padding:11px 14px">
+                </div>
+                <div class="form-group">
+                  <label style="margin-bottom:6px">Quantity</label>
+                  <input value="12,000 units" readonly style="padding:11px 14px">
+                </div>
+                <div class="form-group" style="grid-column:span 2">
+                  <label style="margin-bottom:6px">Origin</label>
+                  <input value="Guangzhou, CN — MediCore Labs Facility B" readonly style="padding:11px 14px">
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+                <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#3A4761">
+                  <span style="width:30px;height:30px;border-radius:10px;background:rgba(124,58,237,.12);color:#7C3AED;display:inline-flex;align-items:center;justify-content:center">🛡</span>
+                  Submission will be signed by <b style="color:#0F1B2D">0x4a8c…d2b9</b>
+                </div>
+                <div style="display:flex;gap:12px">
+                  <button type="button" class="btn-ghost" style="padding:10px 20px;font-size:14px">Save Draft</button>
+                  <button type="submit" class="btn-grad" style="padding:11px 24px;font-size:14px">Generate QR Code</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:600px;width:360px;height:155px;padding:18px 22px;z-index:10">
+          <div style="font-size:13px;color:#6B7793;font-weight:600;margin-bottom:6px">Products Added This Month</div>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:10px">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="#FEE2E2" stroke-width="12" fill="none"></circle>
+              <circle cx="50" cy="50" r="42" stroke="#FB7185" stroke-width="12" fill="none" stroke-dasharray="224 264" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+              <text x="50" y="55" text-anchor="middle" font-family="Sora" font-size="18" font-weight="700" fill="#0F1B2D">85%</text>
+            </svg>
+            <div>
+              <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#0F1B2D;line-height:1">142</div>
+              <div style="font-size:12px;color:#6B7793;margin-top:2px">of 167 monthly target</div>
+              <div style="font-size:12px;color:#10B981;font-weight:600;margin-top:8px">▲ 12% vs last month</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:650px;top:600px;width:380px;height:155px;padding:18px 22px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:13px;color:#6B7793;font-weight:600">Batch Status Overview</div>
+            <span style="font-size:11px;color:#7C3AED;font-weight:700">This week</span>
+          </div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;height:100px;margin-top:14px;padding:0 6px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="width:38px;height:60px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#34D399,#10B981)"></div>
+              <div style="font-size:11px;color:#3A4761;font-weight:600">Active</div>
+              <div style="font-size:11px;color:#0F1B2D;font-weight:700">48</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="width:38px;height:38px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#22D3EE,#0891B2)"></div>
+              <div style="font-size:11px;color:#3A4761;font-weight:600">Pending</div>
+              <div style="font-size:11px;color:#0F1B2D;font-weight:700">17</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="width:38px;height:88px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#A78BFA,#7C3AED)"></div>
+              <div style="font-size:11px;color:#3A4761;font-weight:600">Verified</div>
+              <div style="font-size:11px;color:#0F1B2D;font-weight:700">77</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="width:38px;height:18px;border-radius:8px 8px 4px 4px;background:#CBD5E1"></div>
+              <div style="font-size:11px;color:#3A4761;font-weight:600">Expired</div>
+              <div style="font-size:11px;color:#0F1B2D;font-weight:700">3</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:1050px;top:600px;width:350px;height:155px;padding:18px 22px;z-index:10">
+          <div style="font-size:13px;color:#6B7793;font-weight:600;margin-bottom:6px">Verification Success Rate</div>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:10px">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="#EDE9FE" stroke-width="12" fill="none"></circle>
+              <circle cx="50" cy="50" r="42" stroke="#7C3AED" stroke-width="12" fill="none" stroke-dasharray="243 264" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+              <text x="50" y="55" text-anchor="middle" font-family="Sora" font-size="18" font-weight="700" fill="#0F1B2D">92%</text>
+            </svg>
+            <div>
+              <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#0F1B2D;line-height:1">8,412</div>
+              <div style="font-size:12px;color:#6B7793;margin-top:2px">scans verified · 30d</div>
+              <div style="font-size:12px;color:#10B981;font-weight:600;margin-top:8px">▲ 4.2% trust improved</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:775px;width:1130px;height:95px;padding:14px 22px;z-index:10;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Recent batches</div>
+            <div style="font-size:12px;color:#6B7793">3 new batches added today</div>
+          </div>
+          <div id="batchListPreview" style="display:flex;align-items:center;gap:24px">
+            <div class="empty-state" style="min-height:48px;padding:12px 16px">Loading batches…</div>
+          </div>
+          <button type="button" id="refreshBatches" class="btn-soft" style="padding:10px 14px">Refresh</button>
+        </div>
+      </section>
+
+      <!-- 07 Batch Management -->
+      <section class="page hidden" id="page-batches" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:420px;height:420px;left:-120px;top:-160px;border-radius:50%;background:radial-gradient(circle,#D8C8FF 0%,transparent 70%);filter:blur(90px);opacity:.45"></div>
+          <div style="position:absolute;width:520px;height:520px;right:-180px;bottom:-180px;border-radius:50%;background:radial-gradient(circle,#FFC9B5 0%,transparent 70%);filter:blur(90px);opacity:.45"></div>
+        </div>
+
+        <div style="position:absolute;left:0;top:0;width:230px;height:900px;background:rgba(255,255,255,.6);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand brand--sidebar"><div class="brand-logo"></div>DawaTrace</div>
+        </div>
+        <div style="position:absolute;left:18px;top:120px;width:200px;z-index:10">
+          <div class="nav-item" data-page="dashboard"><span class="ic">▦</span> Dashboard</div>
+          <div class="nav-item" data-page="products"><span class="ic">▭</span> Products</div>
+          <div class="nav-item active" data-page="batches"><span class="ic">⎙</span> Batch Management</div>
+          <div class="nav-item" data-page="analytics"><span class="ic">📈</span> Analytics</div>
+          <div class="nav-item"><span class="ic">⚙</span> Settings</div>
+          <div class="nav-item"><span class="ic">?</span> Support</div>
+        </div>
+
+        <h1 class="h-display" style="position:absolute;left:270px;top:36px;font-size:28px;margin:0;z-index:10">Batch Management</h1>
+        <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">All registered batches · synced on-chain</div>
+
+        <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10;flex-wrap:wrap">
+          <button type="button" class="btn-soft" onclick="toggleTransferModal(true)">Transfer Custody</button>
+          <button type="button" class="btn-soft">Export CSV</button>
+          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">+ New Batch</button>
+        </div>
+
+        <div style="position:absolute;left:270px;top:120px;width:1130px;display:flex;gap:18px;z-index:10">
+          <div class="card" style="flex:1;padding:18px 20px">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Total Batches</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#0F1B2D;margin-top:4px">1,284</div>
+            <div style="font-size:11px;color:#10B981;font-weight:600">▲ 8.4% this month</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Active</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#10B981;margin-top:4px">892</div>
+            <div style="font-size:11px;color:#6B7793">69% of total</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Pending</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#F59E0B;margin-top:4px">204</div>
+            <div style="font-size:11px;color:#6B7793">awaiting QC</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Expired</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#9CA3AF;margin-top:4px">37</div>
+            <div style="font-size:11px;color:#EF4444;font-weight:600">action required</div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:240px;width:1130px;display:flex;align-items:center;gap:10px;z-index:10">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;flex:1;color:#6B7793;font-size:14px">
+            🔍 Search by batch number, product, SKU…
+          </div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">All status ▾</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">All products ▾</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">Last 30 days ▾</div>
+          <div class="tag" style="background:#0F1B2D;color:#fff;padding:9px 14px">✕ Filters · 2</div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:300px;width:1130px;height:530px;padding:0;overflow:hidden;z-index:10">
+          <div style="display:grid;grid-template-columns:160px 1.4fr 1fr 130px 130px 1fr 200px;gap:0;padding:14px 26px;border-bottom:1px solid #EEF1F7;font-size:12px;color:#6B7793;font-weight:700;text-transform:uppercase;letter-spacing:.06em">
+            <div>Batch #</div>
+            <div>Product</div>
+            <div>Manufacturer</div>
+            <div>Status</div>
+            <div>Expiry</div>
+            <div>Origin → Destination</div>
+            <div style="text-align:right">Actions</div>
+          </div>
+          <div id="batchList" style="display:block;padding-bottom:96px;overflow:auto;max-height:468px">
+            <div class="empty-state">Loading batches…</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 26px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#6B7793;border-top:1px solid #EEF1F7;background:#fff">
+            <span>Showing 1–6 of 1,284 batches</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #E6EAF2;display:inline-flex;align-items:center;justify-content:center">‹</span>
+              <span style="width:32px;height:32px;border-radius:8px;background:var(--grad);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700">1</span>
+              <span style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #E6EAF2;display:inline-flex;align-items:center;justify-content:center">2</span>
+              <span style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #E6EAF2;display:inline-flex;align-items:center;justify-content:center">3</span>
+              <span>…</span>
+              <span style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #E6EAF2;display:inline-flex;align-items:center;justify-content:center">›</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 08 Analytics -->
+      <section class="page hidden" id="page-analytics" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:420px;height:420px;left:-120px;top:-160px;border-radius:50%;background:radial-gradient(circle,#A8F0DC 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+          <div style="position:absolute;width:520px;height:520px;right:-180px;bottom:-180px;border-radius:50%;background:radial-gradient(circle,#D8C8FF 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+        </div>
+
+        <div style="position:absolute;left:0;top:0;width:230px;height:900px;background:rgba(255,255,255,.6);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand brand--sidebar"><div class="brand-logo"></div>DawaTrace</div>
+        </div>
+        <div style="position:absolute;left:18px;top:120px;width:200px;z-index:10">
+          <div class="nav-item" data-page="dashboard"><span class="ic">▦</span> Dashboard</div>
+          <div class="nav-item" data-page="products"><span class="ic">▭</span> Products</div>
+          <div class="nav-item" data-page="batches"><span class="ic">⎙</span> Batch Management</div>
+          <div class="nav-item active" data-page="analytics"><span class="ic">📈</span> Analytics</div>
+          <div class="nav-item"><span class="ic">⚙</span> Settings</div>
+          <div class="nav-item"><span class="ic">?</span> Support</div>
+        </div>
+
+        <h1 class="h-display" style="position:absolute;left:270px;top:36px;font-size:28px;margin:0;z-index:10">Analytics</h1>
+        <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">Trust signals across every batch you’ve shipped</div>
+        <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10">
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">📅 Last 90 days ▾</div>
+          <button type="button" class="btn-soft">↧ Report</button>
+          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px">◉ Share on-chain</button>
+        </div>
+
+        <div style="position:absolute;left:270px;top:120px;width:1130px;display:flex;gap:18px;z-index:10">
+          <div class="card" style="flex:1;padding:18px 20px;position:relative;overflow:hidden">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Total Verifications</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#0F1B2D;margin-top:4px">48,217</div>
+            <div style="font-size:11px;color:#10B981;font-weight:700">▲ 14.8%</div>
+            <div style="position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:10px;background:rgba(34,211,238,.15);color:#0891B2;display:flex;align-items:center;justify-content:center">◉</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px;position:relative;overflow:hidden">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Authentic Rate</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#10B981;margin-top:4px">99.4%</div>
+            <div style="font-size:11px;color:#10B981;font-weight:700">▲ 0.3%</div>
+            <div style="position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,.15);color:#10B981;display:flex;align-items:center;justify-content:center">✓</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px;position:relative;overflow:hidden">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Counterfeits Blocked</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#EF4444;margin-top:4px">312</div>
+            <div style="font-size:11px;color:#6B7793;font-weight:700">across 14 regions</div>
+            <div style="position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:10px;background:#FEE2E2;color:#EF4444;display:flex;align-items:center;justify-content:center">⚠</div>
+          </div>
+          <div class="card" style="flex:1;padding:18px 20px;position:relative;overflow:hidden">
+            <div style="font-size:12px;color:#6B7793;font-weight:600">Avg. Trace Time</div>
+            <div style="font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:#0F1B2D;margin-top:4px">1.8s</div>
+            <div style="font-size:11px;color:#10B981;font-weight:700">▼ 220ms faster</div>
+            <div style="position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,.15);color:#7C3AED;display:flex;align-items:center;justify-content:center">⚡</div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:250px;width:730px;height:340px;padding:24px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:18px;color:#0F1B2D">Verifications over time</h3>
+              <div style="font-size:12px;color:#6B7793">Daily on-chain reads · last 90 days</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <span class="tag" style="background:#EDE7FF;color:#7C3AED">Authentic</span>
+              <span class="tag" style="background:#FEE2E2;color:#EF4444">Counterfeit</span>
+            </div>
+          </div>
+          <svg viewBox="0 0 680 240" style="width:100%;height:240px;margin-top:6px">
+            <defs>
+              <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#7C3AED" stop-opacity=".35"></stop>
+                <stop offset="1" stop-color="#7C3AED" stop-opacity="0"></stop>
+              </linearGradient>
+              <linearGradient id="line" x1="0" x2="1">
+                <stop offset="0" stop-color="#22D3EE"></stop>
+                <stop offset="1" stop-color="#7C3AED"></stop>
+              </linearGradient>
+            </defs>
+            <g stroke="#EEF1F7" stroke-width="1">
+              <line x1="40" y1="20" x2="660" y2="20"></line>
+              <line x1="40" y1="70" x2="660" y2="70"></line>
+              <line x1="40" y1="120" x2="660" y2="120"></line>
+              <line x1="40" y1="170" x2="660" y2="170"></line>
+              <line x1="40" y1="210" x2="660" y2="210"></line>
+            </g>
+            <g font-family="Plus Jakarta Sans" font-size="10" fill="#9CA3AF">
+              <text x="10" y="24">2k</text><text x="10" y="74">1.5k</text><text x="10" y="124">1k</text><text x="10" y="174">.5k</text><text x="10" y="214">0</text>
+            </g>
+            <path d="M 40 170 L 90 150 L 140 160 L 190 130 L 240 145 L 290 110 L 340 120 L 390 80 L 440 95 L 490 60 L 540 75 L 590 45 L 660 55 L 660 210 L 40 210 Z" fill="url(#area)"></path>
+            <path d="M 40 170 L 90 150 L 140 160 L 190 130 L 240 145 L 290 110 L 340 120 L 390 80 L 440 95 L 490 60 L 540 75 L 590 45 L 660 55" stroke="url(#line)" stroke-width="3" fill="none" stroke-linecap="round"></path>
+            <path d="M 40 200 L 90 198 L 140 202 L 190 195 L 240 200 L 290 192 L 340 197 L 390 190 L 440 195 L 490 188 L 540 192 L 590 186 L 660 190" stroke="#EF4444" stroke-width="2" fill="none" stroke-dasharray="4 4"></path>
+            <circle cx="540" cy="75" r="6" fill="#fff" stroke="#7C3AED" stroke-width="3"></circle>
+            <g transform="translate(440 22)">
+              <rect width="160" height="40" rx="10" fill="#0F1B2D"></rect>
+              <text x="14" y="18" font-family="Plus Jakarta Sans" font-size="11" fill="#9CA3AF">Mar 14 · authentic</text>
+              <text x="14" y="33" font-family="Sora" font-size="13" font-weight="700" fill="#fff">1,842 verifications</text>
+            </g>
+            <line x1="540" y1="32" x2="540" y2="70" stroke="#0F1B2D" stroke-width="1" stroke-dasharray="2 2"></line>
+            <g font-family="Plus Jakarta Sans" font-size="10" fill="#9CA3AF">
+              <text x="35" y="228">Dec 1</text><text x="170" y="228">Dec 22</text><text x="305" y="228">Jan 14</text><text x="440" y="228">Feb 6</text><text x="565" y="228">Feb 28</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="card" style="position:absolute;left:1020px;top:250px;width:380px;height:340px;padding:24px;z-index:10">
+          <h3 style="margin:0 0 4px 0;font-family:'Sora',sans-serif;font-size:18px;color:#0F1B2D">Top verified products</h3>
+          <div style="font-size:12px;color:#6B7793;margin-bottom:18px">By scan volume · 30 days</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="font-weight:600;color:#0F1B2D">Amoxicillin 500mg</span><span style="color:#6B7793;font-weight:700">12.4k</span></div>
+              <div style="height:8px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:90%;height:100%;background:linear-gradient(90deg,#22D3EE,#7C3AED);border-radius:6px"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="font-weight:600;color:#0F1B2D">Paracetamol Syrup</span><span style="color:#6B7793;font-weight:700">9.1k</span></div>
+              <div style="height:8px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:72%;height:100%;background:linear-gradient(90deg,#34D399,#22D3EE);border-radius:6px"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="font-weight:600;color:#0F1B2D">Insulin Glargine</span><span style="color:#6B7793;font-weight:700">7.8k</span></div>
+              <div style="height:8px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:60%;height:100%;background:linear-gradient(90deg,#F472B6,#7C3AED);border-radius:6px"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="font-weight:600;color:#0F1B2D">Ibuprofen 200mg</span><span style="color:#6B7793;font-weight:700">5.6k</span></div>
+              <div style="height:8px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:48%;height:100%;background:linear-gradient(90deg,#F59E0B,#F472B6);border-radius:6px"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="font-weight:600;color:#0F1B2D">Hep-B Vaccine 0.5ml</span><span style="color:#6B7793;font-weight:700">3.2k</span></div>
+              <div style="height:8px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:32%;height:100%;background:linear-gradient(90deg,#A78BFA,#22D3EE);border-radius:6px"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:610px;width:730px;height:260px;padding:22px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div>
+              <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:18px;color:#0F1B2D">Verifications by region</h3>
+              <div style="font-size:12px;color:#6B7793">Live map · last 24 hours</div>
+            </div>
+            <span class="tag" style="background:#E9F7F2;color:#10B981">● 7 regions active</span>
+          </div>
+          <div style="position:relative;height:170px;border-radius:14px;background:linear-gradient(135deg,#F4F0FF 0%,#E8FAFE 100%);overflow:hidden">
+            <svg viewBox="0 0 680 170" style="position:absolute;inset:0;width:100%;height:100%;opacity:.4">
+              <defs><pattern id="d2" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#94A3B8"></circle></pattern></defs>
+              <rect width="680" height="170" fill="url(#d2)"></rect>
+            </svg>
+            <div style="position:absolute;left:80px;top:50px"><div style="width:18px;height:18px;border-radius:50%;background:#22D3EE;border:3px solid #fff;box-shadow:0 4px 10px rgba(34,211,238,.5)"></div></div>
+            <div style="position:absolute;left:130px;top:80px"><div style="width:28px;height:28px;border-radius:50%;background:#7C3AED;border:3px solid #fff;box-shadow:0 4px 10px rgba(124,58,237,.5)"></div></div>
+            <div style="position:absolute;left:260px;top:40px"><div style="width:22px;height:22px;border-radius:50%;background:#10B981;border:3px solid #fff;box-shadow:0 4px 10px rgba(16,185,129,.5)"></div></div>
+            <div style="position:absolute;left:330px;top:90px"><div style="width:36px;height:36px;border-radius:50%;background:#F472B6;border:3px solid #fff;box-shadow:0 4px 14px rgba(244,114,182,.5)"></div></div>
+            <div style="position:absolute;left:480px;top:60px"><div style="width:24px;height:24px;border-radius:50%;background:#F59E0B;border:3px solid #fff;box-shadow:0 4px 10px rgba(245,158,11,.5)"></div></div>
+            <div style="position:absolute;left:560px;top:100px"><div style="width:20px;height:20px;border-radius:50%;background:#22D3EE;border:3px solid #fff;box-shadow:0 4px 10px rgba(34,211,238,.5)"></div></div>
+            <div style="position:absolute;left:14px;bottom:12px;display:flex;gap:14px;font-size:11px;color:#3A4761;font-weight:600;background:rgba(255,255,255,.85);padding:8px 12px;border-radius:10px">
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22D3EE;margin-right:5px"></span>Asia · 18.4k</span>
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7C3AED;margin-right:5px"></span>EMEA · 14.2k</span>
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:5px"></span>Americas · 12.8k</span>
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F472B6;margin-right:5px"></span>Africa · 2.8k</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:1020px;top:610px;width:380px;height:260px;padding:22px;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:17px;color:#0F1B2D">⟡ Recent chain events</h3>
+            <span style="font-size:11px;color:#7C3AED;font-weight:700">Live</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+            <div style="display:flex;align-items:flex-start;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:#E9F7F2;color:#10B981;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">✓</div><div style="flex:1"><div style="color:#0F1B2D;font-weight:600">Batch <span style="font-family:monospace">DWT-2026-1247</span> verified</div><div style="color:#6B7793;font-size:11px">tx 0x4a2b…d2b9 · 12s ago</div></div></div>
+            <div style="display:flex;align-items:flex-start;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:#EDE7FF;color:#7C3AED;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">+</div><div style="flex:1"><div style="color:#0F1B2D;font-weight:600">New batch minted <span style="font-family:monospace">DWT-2026-1252</span></div><div style="color:#6B7793;font-size:11px">tx 0x9e0c…71fa · 2 min ago</div></div></div>
+            <div style="display:flex;align-items:flex-start;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:#FEE2E2;color:#EF4444;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">!</div><div style="flex:1"><div style="color:#0F1B2D;font-weight:600">Counterfeit attempt blocked · Lagos</div><div style="color:#6B7793;font-size:11px">scan 0xff31…8a02 · 6 min ago</div></div></div>
+            <div style="display:flex;align-items:flex-start;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#F59E0B;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">→</div><div style="flex:1"><div style="color:#0F1B2D;font-weight:600">Custody transferred · Mumbai → Nairobi</div><div style="color:#6B7793;font-size:11px">tx 0xb481…2cc7 · 11 min ago</div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 09 Products -->
+      <section class="page hidden" id="page-products" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:420px;height:420px;left:-120px;top:-160px;border-radius:50%;background:radial-gradient(circle,#B8E4FF 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+          <div style="position:absolute;width:520px;height:520px;right:-180px;bottom:-180px;border-radius:50%;background:radial-gradient(circle,#FFC9B5 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+        </div>
+
+        <div style="position:absolute;left:0;top:0;width:230px;height:900px;background:rgba(255,255,255,.6);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand brand--sidebar"><div class="brand-logo"></div>DawaTrace</div>
+        </div>
+        <div style="position:absolute;left:18px;top:120px;width:200px;z-index:10">
+          <div class="nav-item" data-page="dashboard"><span class="ic">▦</span> Dashboard</div>
+          <div class="nav-item active" data-page="products"><span class="ic">▭</span> Products</div>
+          <div class="nav-item" data-page="batches"><span class="ic">⎙</span> Batch Management</div>
+          <div class="nav-item" data-page="analytics"><span class="ic">📈</span> Analytics</div>
+          <div class="nav-item"><span class="ic">⚙</span> Settings</div>
+          <div class="nav-item"><span class="ic">?</span> Support</div>
+        </div>
+
+        <h1 class="h-display" style="position:absolute;left:270px;top:36px;font-size:28px;line-height:1.1;margin:0;z-index:10;padding-bottom:4px">Products</h1>
+        <div style="position:absolute;left:270px;top:74px;font-size:13px;color:#6B7793;z-index:10">Your full catalog · 42 SKUs across 7 categories</div>
+
+        <div style="position:absolute;right:36px;top:36px;display:flex;align-items:center;gap:10px;z-index:10">
+          <button type="button" class="btn-soft">↧ Export</button>
+          <button type="button" class="btn-soft">✕ Filter</button>
+          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">+ Add Product</button>
+        </div>
+
+        <div style="position:absolute;left:270px;top:120px;width:1130px;display:flex;align-items:center;gap:10px;z-index:10">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#fff;border:1px solid #E6EAF2;flex:1;color:#6B7793;font-size:14px">
+            🔍 Search products by name, SKU or category…
+          </div>
+          <div class="tag" style="background:var(--grad);color:#fff;padding:9px 16px">All · 42</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">💊 Tablets · 18</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">💉 Vials · 9</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">🧴 Syrups · 7</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">🩹 Devices · 8</div>
+          <div class="tag" style="background:#fff;border:1px solid #E6EAF2;padding:9px 14px">Sort: Newest ▾</div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">💊</div>
+            <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">Rx-only</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Amoxicillin 500mg</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">Antibiotic · Capsules</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">14</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">12.4k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">99.6%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">AMX-500-C24</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:558px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">💉</div>
+            <span class="pill pending" style="position:absolute;left:14px;top:14px">◐ Pending</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">Cold-chain</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Insulin Glargine</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">100IU · Injectable vials</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">7</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">7.8k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">98.9%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">INS-100-V10</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:846px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#A8F0DC,#B8E4FF);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">🧴</div>
+            <span class="pill verified" style="position:absolute;left:14px;top:14px">● Verified</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">OTC</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Paracetamol Syrup</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">250ml · Pediatric</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">21</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">9.1k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">99.8%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">PCM-250-S</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:1134px;top:200px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#FFE08A,#FFC9D6);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">💊</div>
+            <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">OTC</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Ibuprofen 200mg</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">Analgesic · Tablets</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">19</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">5.6k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">99.2%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">IBU-200-T48</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#D8C8FF,#FFC9D6);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">💉</div>
+            <span class="pill verified" style="position:absolute;left:14px;top:14px">● Verified</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">Vaccine</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Hep-B Vaccine 0.5ml</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">Recombinant · 10-vial pack</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">5</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">3.2k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">100%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">HEP-VAC-05</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:558px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#E5E7EB,#F3F4F6);position:relative;display:flex;align-items:center;justify-content:center;filter:grayscale(.4)">
+            <div style="font-size:54px;opacity:.7">💊</div>
+            <span class="pill expired" style="position:absolute;left:14px;top:14px;filter:none">◌ Expired</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px;filter:none">Recall</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Aspirin 75mg</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">Anti-platelet · Tablets</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">3</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#6B7793;font-weight:700;margin-top:2px">1.1k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#EF4444;font-weight:700;margin-top:2px">87.4%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">ASP-075-C30</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:846px;top:540px;width:266px;height:316px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,27,45,.05);overflow:hidden;z-index:10">
+          <div style="height:130px;background:linear-gradient(135deg,#FCE7F3,#FFE08A);position:relative;display:flex;align-items:center;justify-content:center">
+            <div style="font-size:54px">🧂</div>
+            <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
+            <span class="tag" style="position:absolute;right:14px;top:14px;background:rgba(255,255,255,.85);color:#0F1B2D;font-size:11px">OTC</span>
+          </div>
+          <div style="padding:16px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">ORS Sachets</div>
+            <div style="font-size:12px;color:#6B7793;margin-top:2px">Rehydration · 4.4g · 10 packs</div>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
+              <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">22</div></div>
+              <div><div style="color:#6B7793">Verified</div><div style="color:#10B981;font-weight:700;margin-top:2px">6.4k</div></div>
+              <div><div style="color:#6B7793">Trust</div><div style="color:#0F1B2D;font-weight:700;margin-top:2px">99.4%</div></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px dashed #EEF1F7">
+              <span style="font-family:monospace;font-size:11px;color:#6B7793">ORS-44-S10</span>
+              <button type="button" class="btn-soft btn-sm" data-page="product-detail">Details →</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:1134px;top:540px;width:266px;height:316px;border-radius:20px;background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(124,58,237,.08));border:2px dashed #C4B5FD;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10;cursor:pointer" data-page="dashboard">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:300;box-shadow:0 12px 26px rgba(124,58,237,.32)">+</div>
+          <div style="font-family:'Sora',sans-serif;font-weight:700;color:#0F1B2D;font-size:16px">Add new product</div>
+          <div style="font-size:12px;color:#6B7793;text-align:center;padding:0 24px;line-height:1.5">Register a new SKU and mint its provenance contract.</div>
+        </div>
+      </section>
+
+      <!-- 10 Product Detail -->
+      <section class="page hidden" id="page-product-detail" style="background:#F7F9FE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:420px;height:420px;left:-120px;top:-160px;border-radius:50%;background:radial-gradient(circle,#D8C8FF 0%,transparent 70%);filter:blur(90px);opacity:.45"></div>
+          <div style="position:absolute;width:520px;height:520px;right:-180px;bottom:-180px;border-radius:50%;background:radial-gradient(circle,#A8F0DC 0%,transparent 70%);filter:blur(90px);opacity:.5"></div>
+        </div>
+
+        <div style="position:absolute;left:0;top:0;width:230px;height:900px;background:rgba(255,255,255,.6);backdrop-filter:blur(18px);border-right:1px solid rgba(230,234,242,.7);z-index:5"></div>
+        <div style="position:absolute;left:30px;top:32px;z-index:10">
+          <div class="brand brand--sidebar"><div class="brand-logo"></div>DawaTrace</div>
+        </div>
+        <div style="position:absolute;left:18px;top:120px;width:200px;z-index:10">
+          <div class="nav-item" data-page="dashboard"><span class="ic">▦</span> Dashboard</div>
+          <div class="nav-item active" data-page="products"><span class="ic">▭</span> Products</div>
+          <div class="nav-item" data-page="batches"><span class="ic">⎙</span> Batch Management</div>
+          <div class="nav-item" data-page="analytics"><span class="ic">📈</span> Analytics</div>
+          <div class="nav-item"><span class="ic">⚙</span> Settings</div>
+          <div class="nav-item"><span class="ic">?</span> Support</div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:36px;font-size:13px;color:#6B7793;z-index:10">
+          <span>Products</span> <span style="margin:0 6px;color:#CBD5E1">›</span> <span>Antibiotics</span> <span style="margin:0 6px;color:#CBD5E1">›</span> <span style="color:#0F1B2D;font-weight:600">Amoxicillin 500mg</span>
+        </div>
+        <div style="position:absolute;right:36px;top:30px;display:flex;align-items:center;gap:10px;z-index:10;flex-wrap:wrap">
+          <button type="button" class="btn-soft">↗ Share</button>
+          <button type="button" class="btn-soft">✎ Edit</button>
+          <button type="button" class="btn-grad" style="padding:10px 20px;font-size:13px" data-page="dashboard">◉ Mint New Batch</button>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:80px;width:830px;height:240px;padding:0;overflow:hidden;z-index:10">
+          <div style="display:flex;height:100%">
+            <div style="width:240px;height:100%;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);display:flex;align-items:center;justify-content:center;position:relative">
+              <div style="font-size:96px">💊</div>
+              <span class="pill active" style="position:absolute;left:14px;top:14px">● Active</span>
+            </div>
+            <div style="flex:1;padding:24px 28px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span class="tag" style="background:#EDE7FF;color:#7C3AED">Antibiotic</span>
+                <span class="tag" style="background:#FEE2E2;color:#EF4444">Rx-only</span>
+                <span class="tag" style="background:#E9F7F2;color:#10B981">✓ On-chain</span>
+              </div>
+              <h2 style="margin:6px 0 4px 0;font-family:'Sora',sans-serif;font-size:28px;line-height:1.1;color:#0F1B2D">Amoxicillin 500mg</h2>
+              <div style="font-size:13px;color:#6B7793">Broad-spectrum penicillin · Capsules · 24-count blister</div>
+              <div style="display:flex;gap:32px;margin-top:18px">
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">SKU</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">AMX-500-C24</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Manufacturer</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">MediCore Labs</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Created</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">Sep 12, 2024</div></div>
+                <div><div style="font-size:11px;color:#6B7793;font-weight:600">Contract</div><div style="font-family:monospace;font-weight:700;color:#7C3AED;margin-top:2px">0x4a2b…d2b9 ↗</div></div>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:18px">
+                <button type="button" class="btn-ghost" style="padding:9px 18px;font-size:13px">▦ Generate QR</button>
+                <button type="button" class="btn-soft">📋 Copy SKU</button>
+                <button type="button" class="btn-soft">◉ View on explorer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:1120px;top:80px;width:280px;height:240px;padding:22px;z-index:10">
+          <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D;margin-bottom:14px">◉ On-chain trust</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <svg width="80" height="80" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="#EDE9FE" stroke-width="12" fill="none"></circle>
+              <circle cx="50" cy="50" r="42" stroke="url(#tg)" stroke-width="12" fill="none" stroke-dasharray="263 264" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+              <defs><linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"></stop><stop offset="1" stop-color="#7C3AED"></stop></linearGradient></defs>
+              <text x="50" y="55" text-anchor="middle" font-family="Sora" font-size="16" font-weight="700" fill="#0F1B2D">99.6%</text>
+            </svg>
+            <div>
+              <div style="font-family:'Sora',sans-serif;font-size:24px;font-weight:800;color:#0F1B2D;line-height:1">12,418</div>
+              <div style="font-size:11px;color:#6B7793;margin-top:2px">verified scans</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:18px;font-size:12px">
+            <div><div style="color:#6B7793">Batches</div><div style="color:#0F1B2D;font-weight:700">14</div></div>
+            <div><div style="color:#6B7793">In transit</div><div style="color:#7C3AED;font-weight:700">3</div></div>
+            <div><div style="color:#6B7793">Regions</div><div style="color:#0F1B2D;font-weight:700">11</div></div>
+            <div><div style="color:#6B7793">Counterfeits</div><div style="color:#EF4444;font-weight:700">2</div></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:270px;top:340px;width:1130px;display:flex;gap:6px;border-bottom:1px solid #E6EAF2;z-index:10">
+          <div style="padding:12px 20px;font-weight:600;color:#0F1B2D;border-bottom:3px solid #7C3AED;margin-bottom:-1px;font-size:14px">Overview</div>
+          <div style="padding:12px 20px;font-weight:500;color:#6B7793;font-size:14px">Batches <span class="tag" style="background:#F1F3F9;color:#0F1B2D;margin-left:6px;padding:2px 8px;font-size:11px">14</span></div>
+          <div style="padding:12px 20px;font-weight:500;color:#6B7793;font-size:14px">QR Codes</div>
+          <div style="padding:12px 20px;font-weight:500;color:#6B7793;font-size:14px">Verifications</div>
+          <div style="padding:12px 20px;font-weight:500;color:#6B7793;font-size:14px">Audit Trail</div>
+          <div style="padding:12px 20px;font-weight:500;color:#6B7793;font-size:14px">Compliance</div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:400px;width:540px;height:240px;padding:22px 24px;z-index:10">
+          <h3 style="margin:0 0 14px 0;font-family:'Sora',sans-serif;font-size:16px;color:#0F1B2D">Product specification</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;font-size:13px">
+            <div><div style="color:#6B7793;font-size:11px">Active ingredient</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">Amoxicillin trihydrate</div></div>
+            <div><div style="color:#6B7793;font-size:11px">Strength</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">500 mg</div></div>
+            <div><div style="color:#6B7793;font-size:11px">Form</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">Hard capsule</div></div>
+            <div><div style="color:#6B7793;font-size:11px">Pack size</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">24 capsules / blister</div></div>
+            <div><div style="color:#6B7793;font-size:11px">Storage</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">≤ 25°C, dry</div></div>
+            <div><div style="color:#6B7793;font-size:11px">Shelf life</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">24 months</div></div>
+            <div><div style="color:#6B7793;font-size:11px">ATC code</div><div style="font-weight:700;color:#0F1B2D;margin-top:2px">J01CA04</div></div>
+            <div><div style="color:#6B7793;font-size:11px">GS1 GTIN</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D;margin-top:2px">06291041500213</div></div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:830px;top:400px;width:270px;height:240px;padding:20px;z-index:10">
+          <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Scans · 30 days</div>
+          <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:#0F1B2D;margin-top:6px">2,184</div>
+          <div style="font-size:11px;color:#10B981;font-weight:700">▲ 18% vs prior</div>
+          <svg viewBox="0 0 230 100" style="margin-top:14px;width:100%;height:100px">
+            <defs>
+              <linearGradient id="ma" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7C3AED" stop-opacity=".4"></stop><stop offset="1" stop-color="#7C3AED" stop-opacity="0"></stop></linearGradient>
+              <linearGradient id="ml" x1="0" x2="1"><stop offset="0" stop-color="#22D3EE"></stop><stop offset="1" stop-color="#7C3AED"></stop></linearGradient>
+            </defs>
+            <path d="M 5 80 L 25 70 L 45 75 L 65 55 L 85 60 L 105 40 L 125 50 L 145 30 L 165 38 L 185 20 L 205 25 L 225 12 L 225 95 L 5 95 Z" fill="url(#ma)"></path>
+            <path d="M 5 80 L 25 70 L 45 75 L 65 55 L 85 60 L 105 40 L 125 50 L 145 30 L 165 38 L 185 20 L 205 25 L 225 12" stroke="url(#ml)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+            <circle cx="225" cy="12" r="4" fill="#fff" stroke="#7C3AED" stroke-width="2.5"></circle>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;margin-top:4px">
+            <span>Jan 1</span><span>Jan 15</span><span>Jan 30</span>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:1120px;top:400px;width:280px;height:240px;padding:20px;z-index:10">
+          <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#0F1B2D">Top regions</div>
+          <div style="font-size:11px;color:#6B7793;margin-bottom:14px">Scans this month</div>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">🇺🇸 United States</span><span style="color:#6B7793;font-weight:700">684</span></div><div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:88%;height:100%;background:linear-gradient(90deg,#22D3EE,#7C3AED);border-radius:6px"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">🇧🇷 Brazil</span><span style="color:#6B7793;font-weight:700">512</span></div><div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:68%;height:100%;background:linear-gradient(90deg,#34D399,#22D3EE);border-radius:6px"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">🇰🇪 Kenya</span><span style="color:#6B7793;font-weight:700">418</span></div><div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:54%;height:100%;background:linear-gradient(90deg,#F472B6,#7C3AED);border-radius:6px"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">🇮🇳 India</span><span style="color:#6B7793;font-weight:700">306</span></div><div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:40%;height:100%;background:linear-gradient(90deg,#F59E0B,#F472B6);border-radius:6px"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#0F1B2D;font-weight:600">🇩🇪 Germany</span><span style="color:#6B7793;font-weight:700">264</span></div><div style="height:6px;border-radius:6px;background:#F1F3F9;overflow:hidden"><div style="width:34%;height:100%;background:linear-gradient(90deg,#A78BFA,#22D3EE);border-radius:6px"></div></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="position:absolute;left:270px;top:660px;width:1130px;height:210px;padding:0;overflow:hidden;z-index:10">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #EEF1F7">
+            <h3 style="margin:0;font-family:'Sora',sans-serif;font-size:16px;color:#0F1B2D">Recent batches for this product</h3>
+            <span style="font-size:13px;color:#7C3AED;font-weight:700">View all 14 →</span>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:10px 24px;border-bottom:1px solid #F1F3F9;font-size:11px;color:#6B7793;font-weight:700;text-transform:uppercase;letter-spacing:.06em">
+            <div>Batch #</div><div>Quantity</div><div>Status</div><div>Expiry</div><div>Route</div><div style="text-align:right">Tx</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:12px 24px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:13px">
+            <div style="font-family:monospace;font-weight:700;color:#0F1B2D">DWT-2026-1247</div>
+            <div style="color:#3A4761">12,000 capsules</div>
+            <div><span class="pill active">✓ Active</span></div>
+            <div style="color:#0F1B2D;font-weight:600">Jan 15, 2028</div>
+            <div style="color:#3A4761">🇨🇳 Guangzhou → 🇺🇸 SF</div>
+            <div style="font-family:monospace;font-size:11px;color:#7C3AED;text-align:right">0x4a2b…d2b9 ↗</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:12px 24px;border-bottom:1px solid #F1F3F9;align-items:center;font-size:13px">
+            <div style="font-family:monospace;font-weight:700;color:#0F1B2D">DWT-2026-1226</div>
+            <div style="color:#3A4761">8,400 capsules</div>
+            <div><span class="pill verified">● Verified</span></div>
+            <div style="color:#0F1B2D;font-weight:600">Dec 02, 2027</div>
+            <div style="color:#3A4761">🇨🇳 Shenzhen → 🇰🇪 Nairobi</div>
+            <div style="font-family:monospace;font-size:11px;color:#7C3AED;text-align:right">0x91fc…0a2b ↗</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 1fr 130px 130px 1fr 140px;padding:12px 24px;align-items:center;font-size:13px">
+            <div style="font-family:monospace;font-weight:700;color:#0F1B2D">DWT-2026-1198</div>
+            <div style="color:#3A4761">15,600 capsules</div>
+            <div><span class="pill pending">◐ Pending</span></div>
+            <div style="color:#0F1B2D;font-weight:600">Nov 18, 2027</div>
+            <div style="color:#3A4761">🇨🇳 Guangzhou → 🇩🇪 Frankfurt</div>
+            <div style="font-family:monospace;font-size:11px;color:#7C3AED;text-align:right">0xb481…2cc7 ↗</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11 Mobile Views -->
+      <section class="page hidden" id="page-mobile" style="background:#FAFBFE;">
+        <div style="position:absolute;left:0;top:0;width:1440px;height:900px;z-index:1;overflow:hidden">
+          <div style="position:absolute;width:560px;height:560px;left:-160px;top:-200px;border-radius:50%;background:radial-gradient(circle,#B8E4FF 0%,transparent 70%);filter:blur(90px);opacity:.65"></div>
+          <div style="position:absolute;width:480px;height:480px;left:40%;top:60%;border-radius:50%;background:radial-gradient(circle,#D8C8FF 0%,transparent 70%);filter:blur(90px);opacity:.55"></div>
+          <div style="position:absolute;width:560px;height:560px;right:-160px;bottom:-180px;border-radius:50%;background:radial-gradient(circle,#FFC9B5 0%,transparent 70%);filter:blur(90px);opacity:.65"></div>
+          <div style="position:absolute;width:380px;height:380px;left:5%;bottom:8%;border-radius:50%;background:radial-gradient(circle,#A8F0DC 0%,transparent 70%);filter:blur(90px);opacity:.6"></div>
+        </div>
+
+        <div style="position:absolute;left:80px;top:36px;width:1280px;display:flex;align-items:center;justify-content:space-between;z-index:10">
+          <div class="brand"><div class="brand-logo"></div>DawaTrace</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span class="tag" style="background:#fff;padding:8px 14px">📱 Consumer app · iOS / Android</span>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;top:100px;text-align:center;z-index:10">
+          <span class="kicker">Mobile experience</span>
+        </div>
+        <h1 class="h-display" style="position:absolute;left:0;right:0;top:130px;text-align:center;font-size:48px;line-height:1.1;margin:0;z-index:10;padding-bottom:6px">
+          Verify in your pocket.
+        </h1>
+        <div style="position:absolute;left:0;right:0;top:200px;text-align:center;font-size:16px;color:#4A5670;z-index:10">
+          The same on-chain truth — wherever the medicine ends up.
+        </div>
+
+        <div class="phone" style="left:120px;top:255px;z-index:10">
+          <div class="notch"></div>
+          <div class="screen" style="background:linear-gradient(170deg,#F4F0FF 0%,#E8FAFE 60%,#FFE3D6 100%)">
+            <div class="status"><span>9:41</span><span>● ● ●</span></div>
+            <div style="position:absolute;left:18px;right:18px;top:54px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#22D3EE,#7C3AED);position:relative">
+                  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:10px;height:10px;border-radius:3px;background:#fff"></div>
+                </div>
+                <div style="font-family:'Sora',sans-serif;font-weight:800;color:#0F1B2D;font-size:15px">DawaTrace</div>
+              </div>
+              <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#A8F0DC,#D8C8FF)"></div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:108px">
+              <div style="font-size:12px;color:#6B7793">Welcome back,</div>
+              <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:24px;color:#0F1B2D;line-height:1.1;margin-top:2px">Verify a pack →</div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:188px;height:140px;border-radius:18px;background:linear-gradient(135deg,#22D3EE 0%,#7C3AED 100%);padding:16px;color:#fff;box-shadow:0 16px 30px rgba(124,58,237,.32);overflow:hidden">
+              <div style="display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;opacity:.9">📷 INSTANT SCAN</div>
+              <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:18px;margin-top:6px;line-height:1.2">Tap to verify<br>any QR code</div>
+              <div style="position:absolute;right:14px;bottom:14px;width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:22px">▶</div>
+              <div style="position:absolute;left:16px;bottom:16px;font-size:11px;font-weight:600;opacity:.9">~1.8s avg</div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:344px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:#fff;border-radius:14px;padding:12px;box-shadow:0 6px 14px rgba(15,27,45,.04)">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(34,211,238,.15);color:#0891B2;display:flex;align-items:center;justify-content:center;font-size:14px">⇪</div>
+                <div style="font-size:11px;font-weight:700;color:#0F1B2D;margin-top:8px">Upload QR</div>
+                <div style="font-size:9px;color:#6B7793;margin-top:1px">from photos</div>
+              </div>
+              <div style="background:#fff;border-radius:14px;padding:12px;box-shadow:0 6px 14px rgba(15,27,45,.04)">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(124,58,237,.15);color:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:14px">🛡</div>
+                <div style="font-size:11px;font-weight:700;color:#0F1B2D;margin-top:8px">Report fake</div>
+                <div style="font-size:9px;color:#6B7793;margin-top:1px">to authority</div>
+              </div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:438px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:13px;color:#0F1B2D">Recent</div>
+                <div style="font-size:10px;color:#7C3AED;font-weight:700">See all</div>
+              </div>
+              <div style="background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;margin-bottom:6px;box-shadow:0 4px 10px rgba(15,27,45,.04)">
+                <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);display:flex;align-items:center;justify-content:center;font-size:15px">💊</div>
+                <div style="flex:1"><div style="font-size:11px;font-weight:700;color:#0F1B2D">Amoxicillin 500mg</div><div style="font-size:9px;color:#6B7793">Today · 9:32</div></div>
+                <span style="width:16px;height:16px;border-radius:50%;background:#10B981;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px">✓</span>
+              </div>
+              <div style="background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 10px rgba(15,27,45,.04)">
+                <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#B8E4FF,#D8C8FF);display:flex;align-items:center;justify-content:center;font-size:15px">💉</div>
+                <div style="flex:1"><div style="font-size:11px;font-weight:700;color:#0F1B2D">Insulin Glargine</div><div style="font-size:9px;color:#6B7793">Yesterday</div></div>
+                <span style="width:16px;height:16px;border-radius:50%;background:#10B981;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px">✓</span>
+              </div>
+            </div>
+            <div class="tabbar">
+              <div class="tab act"><div class="ic">🏠</div>Home</div>
+              <div class="tab"><div class="ic">▦</div>Scan</div>
+              <div class="tab"><div class="ic">⌚</div>History</div>
+              <div class="tab"><div class="ic">👤</div>Wallet</div>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:120px;top:878px;width:300px;text-align:center;z-index:10;font-size:13px;color:#3A4761;font-weight:600">01 · Home</div>
+
+        <div class="phone" style="left:570px;top:255px;z-index:10">
+          <div class="notch"></div>
+          <div class="screen" style="background:#0a0a14">
+            <div class="status" style="color:#fff"><span>9:41</span><span>● ● ●</span></div>
+            <div style="position:absolute;left:0;right:0;top:42px;display:flex;align-items:center;justify-content:space-between;padding:8px 18px;color:#fff;z-index:25">
+              <div style="width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px">‹</div>
+              <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:14px">Scan QR Code</div>
+              <div style="width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px">⚡</div>
+            </div>
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,#1f2937 0%,#0a0a14 70%)"></div>
+            <div style="position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:220px;height:220px;border-radius:18px">
+              <span style="position:absolute;left:-3px;top:-3px;width:38px;height:38px;border-left:4px solid #22D3EE;border-top:4px solid #22D3EE;border-radius:14px 0 0 0;box-shadow:0 0 10px rgba(34,211,238,.5)"></span>
+              <span style="position:absolute;right:-3px;top:-3px;width:38px;height:38px;border-right:4px solid #7C3AED;border-top:4px solid #7C3AED;border-radius:0 14px 0 0;box-shadow:0 0 10px rgba(124,58,237,.5)"></span>
+              <span style="position:absolute;left:-3px;bottom:-3px;width:38px;height:38px;border-left:4px solid #F472B6;border-bottom:4px solid #F472B6;border-radius:0 0 0 14px;box-shadow:0 0 10px rgba(244,114,182,.5)"></span>
+              <span style="position:absolute;right:-3px;bottom:-3px;width:38px;height:38px;border-right:4px solid #F59E0B;border-bottom:4px solid #F59E0B;border-radius:0 0 14px 0;box-shadow:0 0 10px rgba(245,158,11,.5)"></span>
+              <div style="position:absolute;left:30px;right:30px;top:30px;bottom:30px;opacity:.45;background:conic-gradient(from 0deg at 18% 18%,#fff 0 25%,transparent 0 100%),conic-gradient(from 0deg at 82% 18%,#fff 0 25%,transparent 0 100%),conic-gradient(from 0deg at 18% 82%,#fff 0 25%,transparent 0 100%),repeating-conic-gradient(#fff 0 25%,transparent 0 50%);background-size:36px 36px,36px 36px,36px 36px,10px 10px;background-position:0 0,100% 0,0 100%,0 0;background-repeat:no-repeat,no-repeat,no-repeat,repeat;border-radius:4px"></div>
+              <div style="position:absolute;left:8px;right:8px;top:50%;height:3px;background:linear-gradient(90deg,transparent,#22D3EE,#7C3AED,transparent);box-shadow:0 0 14px rgba(34,211,238,.7);border-radius:3px"></div>
+            </div>
+            <div style="position:absolute;left:0;right:0;top:430px;text-align:center;color:#fff">
+              <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px">Align the code in the frame</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:4px">Scanning… looking up on Polygon</div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;bottom:90px;display:flex;align-items:center;justify-content:space-around">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff">
+                <div style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:18px">⇪</div>
+                <div style="font-size:9px;font-weight:600">Upload</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff">
+                <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(255,255,255,.2)">
+                  <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#22D3EE,#7C3AED)"></div>
+                </div>
+                <div style="font-size:9px;font-weight:600">Capture</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff">
+                <div style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:18px">🔦</div>
+                <div style="font-size:9px;font-weight:600">Flash</div>
+              </div>
+            </div>
+            <div class="tabbar" style="background:rgba(255,255,255,.95);backdrop-filter:blur(20px)">
+              <div class="tab"><div class="ic">🏠</div>Home</div>
+              <div class="tab act"><div class="ic">▦</div>Scan</div>
+              <div class="tab"><div class="ic">⌚</div>History</div>
+              <div class="tab"><div class="ic">👤</div>Wallet</div>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:570px;top:878px;width:300px;text-align:center;z-index:10;font-size:13px;color:#3A4761;font-weight:600">02 · Live Scanner</div>
+
+        <div class="phone" style="left:1020px;top:255px;z-index:10">
+          <div class="notch"></div>
+          <div class="screen" style="background:linear-gradient(170deg,#ECFDF5 0%,#E8FAFE 50%,#F4F0FF 100%)">
+            <div class="status"><span>9:41</span><span>● ● ●</span></div>
+            <div style="position:absolute;left:0;right:0;top:42px;display:flex;align-items:center;justify-content:space-between;padding:8px 18px;z-index:25">
+              <div style="width:28px;height:28px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;color:#0F1B2D">‹</div>
+              <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:#0F1B2D">Result</div>
+              <div style="width:28px;height:28px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;color:#0F1B2D">↗</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;top:90px;display:flex;flex-direction:column;align-items:center">
+              <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#10B981,#22D3EE);display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:800;box-shadow:0 14px 30px rgba(16,185,129,.4)">✓</div>
+              <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:20px;color:#0F1B2D;margin-top:12px">Authentic</div>
+              <div style="font-size:11px;color:#6B7793;margin-top:2px">Verified on-chain · 1.8s</div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:236px;background:#fff;border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(15,27,45,.06)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#FFC9B5,#FFE3D6);display:flex;align-items:center;justify-content:center;font-size:20px">💊</div>
+                <div style="flex:1">
+                  <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:13px;color:#0F1B2D">Amoxicillin 500mg</div>
+                  <div style="font-size:10px;color:#6B7793">MediCore Labs · Rx-only</div>
+                </div>
+                <span class="pill active" style="font-size:9px;padding:3px 8px">Active</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:12px;font-size:10px">
+                <div><div style="color:#6B7793">Batch</div><div style="font-family:monospace;font-weight:700;color:#0F1B2D">DWT-2026-1247</div></div>
+                <div><div style="color:#6B7793">Expires</div><div style="font-weight:700;color:#10B981">Jan 15, 2028</div></div>
+              </div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:354px;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,27,45,.06)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:11px;color:#0F1B2D">Supply chain</div>
+                <div style="font-size:9px;color:#7C3AED;font-weight:700">View all →</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:26px;height:26px;border-radius:8px;background:#B8E4FF;display:flex;align-items:center;justify-content:center;font-size:11px">🏭</div><div style="font-size:8px;color:#6B7793;font-weight:600">Made</div></div>
+                <div style="flex:1;height:2px;background:linear-gradient(90deg,#B8E4FF,#FFC9D6);margin:0 4px"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:26px;height:26px;border-radius:8px;background:#FFC9D6;display:flex;align-items:center;justify-content:center;font-size:11px">🛡</div><div style="font-size:8px;color:#6B7793;font-weight:600">QC</div></div>
+                <div style="flex:1;height:2px;background:linear-gradient(90deg,#FFC9D6,#FFE08A);margin:0 4px"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:26px;height:26px;border-radius:8px;background:#FFE08A;display:flex;align-items:center;justify-content:center;font-size:11px">📦</div><div style="font-size:8px;color:#6B7793;font-weight:600">Stored</div></div>
+                <div style="flex:1;height:2px;background:linear-gradient(90deg,#FFE08A,#D8C8FF);margin:0 4px"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:26px;height:26px;border-radius:8px;background:#D8C8FF;display:flex;align-items:center;justify-content:center;font-size:11px">🚢</div><div style="font-size:8px;color:#6B7793;font-weight:600">Transit</div></div>
+                <div style="flex:1;height:2px;background:linear-gradient(90deg,#D8C8FF,#A8F0DC);margin:0 4px"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:26px;height:26px;border-radius:8px;background:#A8F0DC;display:flex;align-items:center;justify-content:center;font-size:11px">✓</div><div style="font-size:8px;color:#10B981;font-weight:700">You</div></div>
+              </div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:452px;background:linear-gradient(135deg,#F4F0FF,#E8FAFE);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:10px;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">◉</div>
+              <div style="flex:1;font-size:10px;color:#3A4761;line-height:1.3">
+                <div style="font-weight:700;color:#0F1B2D">Polygon · Block #18,394,201</div>
+                <div style="font-family:monospace;color:#6B7793">0x4a2b…d2b9</div>
+              </div>
+              <div style="font-size:11px;color:#7C3AED;font-weight:700">↗</div>
+            </div>
+            <div style="position:absolute;left:18px;right:18px;top:528px;display:flex;gap:8px">
+              <button type="button" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(90deg,#22D3EE,#7C3AED);color:#fff;font-weight:700;font-size:11px;font-family:inherit">↧ Save proof</button>
+              <button type="button" style="flex:1;padding:11px;border:1.5px solid #0F1B2D;border-radius:12px;background:transparent;color:#0F1B2D;font-weight:700;font-size:11px;font-family:inherit">↗ Share</button>
+            </div>
+            <div class="tabbar">
+              <div class="tab"><div class="ic">🏠</div>Home</div>
+              <div class="tab"><div class="ic">▦</div>Scan</div>
+              <div class="tab act"><div class="ic">⌚</div>History</div>
+              <div class="tab"><div class="ic">👤</div>Wallet</div>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:1020px;top:878px;width:300px;text-align:center;z-index:10;font-size:13px;color:#3A4761;font-weight:600">03 · Verified ✓</div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Transfer modal -->
+  <div class="modal hidden" id="transferModal">
+    <div class="modal-backdrop" onclick="toggleTransferModal(false)"></div>
+    <div class="modal-content" style="max-width:700px;text-align:left">
+      <button type="button" class="modal-close" onclick="toggleTransferModal(false)">×</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px">
+        <div>
+          <div class="kicker">Custody transfer</div>
+          <h3 style="margin:6px 0 0;font-family:'Sora',sans-serif;font-size:28px;color:var(--ink)">Transfer batch custody</h3>
+        </div>
+        <span class="tag">On-chain handoff</span>
+      </div>
+      <form id="transferForm" class="form">
+        <div class="form-inline" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="form-group">
+            <label for="transferBatchId">Batch ID</label>
+            <input type="text" id="transferBatchId" placeholder="0x..." required>
+          </div>
+          <div class="form-group">
+            <label for="recipientAddress">Recipient Address</label>
+            <input type="text" id="recipientAddress" placeholder="0x..." required>
+          </div>
+          <div class="form-group">
+            <label for="transferLocation">Location</label>
+            <input type="text" id="transferLocation" placeholder="e.g. Nairobi Distribution Hub" required>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button type="button" class="btn-secondary btn" onclick="toggleTransferModal(false)">Cancel</button>
+          <button type="submit" class="btn-grad">Transfer custody</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- QR modal -->
+  <div class="modal hidden" id="qrModal">
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+    <div class="modal-content">
+      <button type="button" class="modal-close" onclick="closeModal()">×</button>
+      <div class="kicker" style="margin-bottom:8px">QR Code</div>
+      <h3 style="margin:0 0 8px;font-family:'Sora',sans-serif;font-size:24px;color:var(--ink)">Batch QR</h3>
+      <div id="qrCodeDisplay" class="qr-display"></div>
+      <p id="qrBatchIdDisplay" class="qr-batch-id"></p>
+      <button type="button" class="btn-secondary btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast">
+    <span id="toastMessage"></span>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="app.js"></script>
 </body>
-
 </html>
