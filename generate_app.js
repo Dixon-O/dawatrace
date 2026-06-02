@@ -1,4 +1,20 @@
+// Generator script — produces frontend/app.js with proper template literals
+const fs = require('fs');
+const BT = '`'; // backtick character
+const D = '$'; // dollar sign
 
+function tl(strings) {
+    // Tag function that returns a template literal string
+    return BT + strings.join('') + BT;
+}
+
+// Helper to produce ${expr} inside template literals
+function $$(expr) { return D + '{' + expr + '}'; }
+
+const code = [];
+
+// ============ SECTION 1: Constants & State ============
+code.push(`
 // ============================================================
 // DawaTrace Frontend Application (Rebuilt)
 // Single-Page Application with hash-based routing
@@ -49,8 +65,10 @@ const DEMO_DB = {
   },
   stats: { verifications: 1247, batches: 8, participants: 7 }
 };
+`);
 
-
+// ============ SECTION 2: Utilities ============
+code.push(`
 const Utils = {
   formatDate: (ts) => new Date(ts * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
   shortAddr: (addr) => addr ? addr.substring(0,6) + '...' + addr.substring(addr.length-4) : '',
@@ -75,8 +93,10 @@ const Utils = {
 window.navigate = function(path) {
   window.location.hash = path;
 };
+`);
 
-
+// ============ SECTION 3: Renderers (using string concat) ============
+code.push(`
 const Renderers = {
   landing: function() {
     var s = DEMO_DB.stats;
@@ -84,8 +104,8 @@ const Renderers = {
       '<h1>Truth in every scan.<br><span class="gradient-text">Protecting lives.</span></h1>' +
       '<p>Verify pharmaceutical products instantly across the Kenyan supply chain. Powered by Polygon blockchain technology.</p>' +
       '<div class="hero-actions mt-lg">' +
-        '<button class="btn btn-primary btn-lg" onclick="navigate(\'/verify\')">Start Verifying Now</button>' +
-        '<button class="btn btn-soft btn-lg" onclick="navigate(\'/dashboard\')">For Manufacturers</button>' +
+        '<button class="btn btn-primary btn-lg" onclick="navigate(\\'/verify\\')">Start Verifying Now</button>' +
+        '<button class="btn btn-soft btn-lg" onclick="navigate(\\'/dashboard\\')">For Manufacturers</button>' +
       '</div>' +
     '</section>' +
     '<section class="container mt-xl animate-in animate-in-delay-1">' +
@@ -109,7 +129,7 @@ const Renderers = {
     for (var i = 0; i < keys.length; i++) {
       var id = keys[i];
       var b = DEMO_DB.batches[id];
-      recentHtml += '<div class="recent-scan-item" onclick="document.getElementById(\'batch-input\').value=\'' + id + '\'">' +
+      recentHtml += '<div class="recent-scan-item" onclick="document.getElementById(\\'batch-input\\').value=\\'' + id + '\\'">' +
         '<div class="scan-dot" style="background:#06B6D4"></div>' +
         '<div style="flex:1">' + b.drugName + '</div>' +
         '<div class="text-mono text-muted text-xs">' + id + '</div>' +
@@ -119,8 +139,8 @@ const Renderers = {
       '<div class="page-header" style="text-align:center"><h1>Verify Medicine</h1><p class="text-secondary">Scan the QR code or enter the batch ID printed on the packaging.</p></div>' +
       '<div class="card">' +
         '<div class="verify-tabs">' +
-          '<button class="verify-tab" id="tab-scan" onclick="UI.switchVerifyTab(\'scan\')">Scan QR Code</button>' +
-          '<button class="verify-tab active" id="tab-manual" onclick="UI.switchVerifyTab(\'manual\')">Enter Batch ID</button>' +
+          '<button class="verify-tab" id="tab-scan" onclick="UI.switchVerifyTab(\\'scan\\')">Scan QR Code</button>' +
+          '<button class="verify-tab active" id="tab-manual" onclick="UI.switchVerifyTab(\\'manual\\')">Enter Batch ID</button>' +
         '</div>' +
         '<div id="view-scan" class="hidden" style="text-align:center;padding:40px 20px">' +
           '<div style="width:100%;height:200px;background:#111;border-radius:12px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem">📷 Camera preview area</div>' +
@@ -144,10 +164,10 @@ const Renderers = {
     if (!data) {
       // NOT found - counterfeit
       return '<div class="container animate-in">' +
-        '<button class="btn btn-ghost mb-md" onclick="navigate(\'/verify\')">← Back to Verify</button>' +
+        '<button class="btn btn-ghost mb-md" onclick="navigate(\\'/verify\\')">← Back to Verify</button>' +
         '<div class="result-banner counterfeit"><div class="result-icon">❌</div><div><h2>Warning: Not Verified</h2><p>Potential counterfeit. Do not consume.</p></div></div>' +
         '<div class="card"><div class="empty-state"><div class="empty-icon">❓</div><p>No blockchain records found for batch ID: <strong>' + batchId + '</strong></p></div></div>' +
-        '<div class="mt-lg" style="text-align:center"><button class="btn btn-danger" onclick="UI.reportCounterfeit(\'' + batchId + '\')">Report Suspected Counterfeit</button></div>' +
+        '<div class="mt-lg" style="text-align:center"><button class="btn btn-danger" onclick="UI.reportCounterfeit(\\'' + batchId + '\\')">Report Suspected Counterfeit</button></div>' +
       '</div>';
     }
     var cls = data.isExpired ? 'counterfeit' : 'authentic';
@@ -157,7 +177,7 @@ const Renderers = {
     var expClass = data.isExpired ? ' text-danger' : '';
 
     return '<div class="container animate-in">' +
-      '<button class="btn btn-ghost mb-md" onclick="navigate(\'/verify\')">← Back to Verify</button>' +
+      '<button class="btn btn-ghost mb-md" onclick="navigate(\\'/verify\\')">← Back to Verify</button>' +
       '<div class="result-banner ' + cls + '"><div class="result-icon">' + icon + '</div><div><h2>' + title + '</h2><p>' + sub + '</p></div></div>' +
       '<div class="result-grid">' +
         '<div class="card"><h3 class="mb-md">Product Details</h3>' +
@@ -167,7 +187,7 @@ const Renderers = {
           '<div class="detail-row"><span class="detail-label">Mfg Date</span><span class="detail-value">' + Utils.formatDate(data.manufactureDate) + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Expiry</span><span class="detail-value' + expClass + '">' + Utils.formatDate(data.expiryDate) + '</span></div>' +
         '</div>' +
-        '<div class="card"><div class="flex-between mb-md"><h3>Custody Chain</h3><button class="btn btn-soft btn-sm" onclick="navigate(\'/track?id=' + batchId + '\')">Full Journey →</button></div>' +
+        '<div class="card"><div class="flex-between mb-md"><h3>Custody Chain</h3><button class="btn btn-soft btn-sm" onclick="navigate(\\'/track?id=' + batchId + '\\')">Full Journey →</button></div>' +
           '<div class="timeline">' + BlockchainService.renderTimeline(batchId) + '</div>' +
         '</div>' +
       '</div>' +
@@ -201,16 +221,16 @@ const Renderers = {
         '<td><div class="pill pill-neutral">' + b.custodyCount + ' Transfers</div></td>' +
         '<td>' + statusPill + '</td>' +
         '<td><div style="display:flex;gap:4px">' +
-          '<button class="btn btn-soft btn-sm" onclick="navigate(\'/track?id=' + id + '\')" title="Track">🔍</button>' +
-          '<button class="btn btn-soft btn-sm" onclick="UI.showTransferModal(\'' + id + '\')" title="Transfer">🚚</button>' +
-          '<button class="btn btn-soft btn-sm" onclick="UI.showQRModal(\'' + id + '\')" title="QR">🔳</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="navigate(\\'/track?id=' + id + '\\')" title="Track">🔍</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="UI.showTransferModal(\\'' + id + '\\')" title="Transfer">🚚</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="UI.showQRModal(\\'' + id + '\\')" title="QR">🔳</button>' +
         '</div></td>' +
       '</tr>';
     }
     return '<div class="dash-layout animate-in">' +
       '<aside class="dash-sidebar">' +
-        '<button class="dash-nav-item active" onclick="navigate(\'/dashboard\')"><span class="icon">📦</span> Batches</button>' +
-        '<button class="dash-nav-item" onclick="navigate(\'/analytics\')"><span class="icon">📈</span> Analytics</button>' +
+        '<button class="dash-nav-item active" onclick="navigate(\\'/dashboard\\')"><span class="icon">📦</span> Batches</button>' +
+        '<button class="dash-nav-item" onclick="navigate(\\'/analytics\\')"><span class="icon">📈</span> Analytics</button>' +
         '<hr style="border:0;border-top:1px solid var(--c-border);margin:8px 0">' +
         '<div style="padding:10px 14px"><div class="text-xs text-muted" style="margin-bottom:4px">ROLE</div><div class="pill pill-purple">Manufacturer</div></div>' +
       '</aside>' +
@@ -238,8 +258,8 @@ const Renderers = {
     }
     return '<div class="dash-layout animate-in">' +
       '<aside class="dash-sidebar">' +
-        '<button class="dash-nav-item" onclick="navigate(\'/dashboard\')"><span class="icon">📦</span> Batches</button>' +
-        '<button class="dash-nav-item active" onclick="navigate(\'/analytics\')"><span class="icon">📈</span> Analytics</button>' +
+        '<button class="dash-nav-item" onclick="navigate(\\'/dashboard\\')"><span class="icon">📦</span> Batches</button>' +
+        '<button class="dash-nav-item active" onclick="navigate(\\'/analytics\\')"><span class="icon">📈</span> Analytics</button>' +
       '</aside>' +
       '<main class="dash-main">' +
         '<div class="page-header flex-between"><div><h1>Network Analytics</h1><p class="text-secondary">DawaTrace ecosystem overview</p></div>' +
@@ -262,8 +282,10 @@ const Renderers = {
     '</div>';
   }
 };
+`);
 
-
+// ============ SECTION 4: UI Controller ============
+code.push(`
 const UI = {
   render: function(fn) { document.getElementById('app').innerHTML = fn(); },
   renderWith: function(fn, a, b) { document.getElementById('app').innerHTML = fn(a, b); },
@@ -301,11 +323,11 @@ const UI = {
       '<p class="text-sm mb-md">Batch: <span class="text-mono">' + batchId + '</span></p>' +
       '<div class="form-group mb-md"><label class="form-label">Recipient Address</label><input type="text" id="trans-to" class="form-input text-mono" placeholder="0x...">' +
         '<div class="mt-sm" style="display:flex;gap:8px">' +
-          '<button class="btn btn-soft btn-sm" onclick="document.getElementById(\'trans-to\').value=\'0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC\'">Distributor</button>' +
-          '<button class="btn btn-soft btn-sm" onclick="document.getElementById(\'trans-to\').value=\'0x90F79bf6EB2c4f870365E785982E1f101E9b9b06\'">Pharmacy</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="document.getElementById(\\'trans-to\\').value=\\'0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC\\'">Distributor</button>' +
+          '<button class="btn btn-soft btn-sm" onclick="document.getElementById(\\'trans-to\\').value=\\'0x90F79bf6EB2c4f870365E785982E1f101E9b9b06\\'">Pharmacy</button>' +
         '</div></div>' +
       '<div class="form-group mb-lg"><label class="form-label">Location</label><input type="text" id="trans-loc" class="form-input" placeholder="e.g. Nairobi Central Hub"></div>' +
-      '<button class="btn btn-primary w-full btn-lg" onclick="BlockchainService.transferCustody(\'' + batchId + '\')">Record Transfer</button>';
+      '<button class="btn btn-primary w-full btn-lg" onclick="BlockchainService.transferCustody(\\'' + batchId + '\\')">Record Transfer</button>';
     document.getElementById('modal-content').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('active');
   },
@@ -317,7 +339,7 @@ const UI = {
         '<div class="text-mono text-sm mt-sm">' + batchId + '</div>' +
       '</div>' +
       '<p style="text-align:center" class="text-sm text-secondary mb-md">Print this QR on packaging for consumer verification.</p>' +
-      '<button class="btn btn-primary w-full" onclick="Utils.showToast(\'Label downloaded\',\'success\');UI.hideModal()">Download Label</button>';
+      '<button class="btn btn-primary w-full" onclick="Utils.showToast(\\'Label downloaded\\',\\'success\\');UI.hideModal()">Download Label</button>';
     document.getElementById('modal-content').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('active');
   },
@@ -352,8 +374,10 @@ const UI = {
     Utils.showToast('Data exported', 'success');
   }
 };
+`);
 
-
+// ============ SECTION 5: Blockchain Service ============
+code.push(`
 const BlockchainService = {
   updateWalletStatus: function() {
     var c = document.getElementById('topbar-actions');
@@ -459,8 +483,10 @@ const BlockchainService = {
     navigate('/dashboard');
   }
 };
+`);
 
-
+// ============ SECTION 6: Router & Init ============
+code.push(`
 function routerHandler() {
   var path = window.location.hash.slice(1) || '/';
   var cleanPath = path;
@@ -505,3 +531,11 @@ window.addEventListener('DOMContentLoaded', function() {
   BlockchainService.updateWalletStatus();
   routerHandler();
 });
+`);
+
+// Write compiled file
+fs.writeFileSync('frontend/app.js', code.join('\n'), 'utf8');
+console.log('SUCCESS: frontend/app.js written (' + code.join('\n').length + ' bytes)');
+
+// Clean up temp file if exists
+try { fs.unlinkSync('frontend/app_core.js'); } catch (e) { }
