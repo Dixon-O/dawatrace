@@ -1,33 +1,69 @@
-# 💊 DawaTrace — Blockchain Drug Verification
+# 💊 DawaTrace
 
-> **One scan. One truth. One life saved.**
+**Blockchain-powered pharmaceutical supply chain verification platform.**
 
-DawaTrace is a blockchain-powered pharmaceutical anti-counterfeit system that enables **instant drug verification** via QR code scanning. Built for the Zone01 Kisumu Blockchain Hackathon.
+DawaTrace enables instant verification of medicine authenticity across Kenya's pharmaceutical supply chain using smart contract technology. It provides an immutable, transparent record of every handoff — from manufacturer to distributor to pharmacy — so consumers can confirm their medicine is genuine with a single scan.
 
 ---
 
-## 🎯 Problem
+## Problem
 
-- **500,000 deaths/year** in sub-Saharan Africa from falsified medicines *(UNODC)*
-- **1 in 10** medical products in developing countries are substandard or fake *(WHO)*
-- **70%+** of Kenya's medicines are imported through fragmented, opaque supply chains *(PPB Kenya)*
+The World Health Organization estimates that **1 in 10 medical products** circulating in low- and middle-income countries is substandard or falsified. In Sub-Saharan Africa, that figure rises to **30%**. Counterfeit medicines kill an estimated **250,000 children annually** from fake antimalarials alone.
 
-**Consumers have zero way to verify if their medicine is real.**
+DawaTrace provides the verification infrastructure to combat this crisis.
 
-## 💡 Solution
+---
 
-DawaTrace gives every medicine a verifiable digital identity on the blockchain:
+## How It Works
 
 ```
 🏭 Manufacturer → 🚛 Distributor → 🏥 Pharmacy → 📱 Consumer SCANS & VERIFIES
    registers          transfers        receives        ✅ or ❌ in seconds
 ```
 
+1. **Manufacturers** register drug batches on-chain with immutable metadata
+2. **Custody transfers** are recorded at each handoff point, enforcing supply chain order
+3. **Consumers** verify any medicine instantly by entering its batch ID or scanning a QR code
+4. **Regulators** can audit the full provenance chain of any batch in real time
+
 ---
 
-## 🚀 Quick Start
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Frontend (SPA)                        │
+│           HTML5 / CSS3 / Vanilla JavaScript              │
+│                                                         │
+│  ┌──────────┐ ┌────────────┐ ┌───────┐ ┌───────────┐   │
+│  │  Verify   │ │ Dashboard  │ │ Track │ │ Analytics │   │
+│  └────┬─────┘ └─────┬──────┘ └───┬───┘ └─────┬─────┘   │
+│       │             │            │            │         │
+│  ┌────▼─────────────▼────────────▼────────────▼───┐     │
+│  │          ethers.js v6 / Demo Mode              │     │
+│  └────────────────────┬───────────────────────────┘     │
+└───────────────────────┼─────────────────────────────────┘
+                        │
+            ┌───────────▼───────────┐
+            │   DrugRegistry.sol    │
+            │   (Solidity 0.8.24)   │
+            │                       │
+            │ • registerParticipant │
+            │ • registerDrugBatch   │
+            │ • transferCustody     │
+            │ • verifyDrugView      │
+            │ • reportCounterfeit   │
+            │ • getCustodyChain     │
+            └───────────────────────┘
+            Polygon / Hardhat Local
+```
+
+---
+
+## Quick Start
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/) v18+
 - [MetaMask](https://metamask.io/) browser extension *(optional — demo mode works without it)*
 
@@ -39,168 +75,34 @@ cd dawatrace
 npm install
 ```
 
-### Run Demo (No Blockchain - Instant)
+### Run in Demo Mode (No Blockchain Required)
 
 ```bash
-npm start
+npm run serve
 ```
 
-Open `http://localhost:3000` → the server redirects into the frontend shell and the app starts in **Demo Mode** automatically with pre-loaded data.
-
-If you prefer to open the static file directly, `frontend/index.html` still works in a browser and will also fall back to demo mode.
+Open `http://localhost:3000` — the app starts in **Demo Mode** automatically with pre-loaded sample data. All features are fully functional without a blockchain connection.
 
 ### Run with Local Blockchain (Full Stack)
 
 ```bash
-# Terminal 1 — Start blockchain
-npx hardhat node
+# Terminal 1 — Start local blockchain
+npm run node
 
 # Terminal 2 — Deploy contract + seed data
-npx hardhat run scripts/deploy.js --network localhost
+npm run deploy
 
-# Terminal 3 — Serve frontend locally
-npm start
+# Terminal 3 — Serve frontend
+npm run serve
 ```
 
-Open `http://localhost:3000` → Connect MetaMask to `localhost:8545` (Chain ID: `31337`).
+Open `http://localhost:3000` → Click **Connect Wallet** → MetaMask auto-switches to `localhost:8545` (Chain ID: `31337`).
 
 ### Run Tests
 
 ```bash
-npx hardhat test
+npm test
 ```
-
-```
-19 passing (2s) ✅
-```
-
----
-
-## 📱 Demo Flow
-
-### Verify Authentic Medicine
-1. Open `http://localhost:3000`
-2. Click **"Enter Batch ID"** tab
-3. Type: `DWT-AMX-2026-0528`
-4. Click **Verify** → ✅ **Green result** with drug name, manufacturer, dates
-
-### Verify Counterfeit
-1. Type: `FAKE-DRUG-123`
-2. Click **Verify** → ❌ **Red warning** — medicine not found on blockchain
-
-### QR Code Scanning Demo
-1. Go to **Manufacturer** page → click **QR** button on any batch → QR modal appears
-2. **Screenshot or display** the QR on your phone screen
-3. Go to **Verify Medicine** → click **Start Scanner** → allow camera
-4. Hold the QR code in front of your webcam → auto-scans and auto-verifies
-
-> 💡 **Pro tip:** Before the demo, screenshot the QR code for `DWT-AMX-2026-0528` and save it on your phone. During the live demo, just hold your phone up to the laptop webcam.
-
-### Track Supply Chain
-1. After a ✅ verification, click **"View Full Supply Chain"**
-2. See the 3-step custody timeline:
-   - 🏭 **Manufacturer** — Kenya Pharma Factory, Nairobi
-   - 🚛 **Distributor** — MedDistribute Warehouse, Mombasa Road
-   - 🏥 **Pharmacy** — Kisumu City Pharmacy, Oginga Odinga St
-
-### Register New Batch
-1. Go to **Manufacturer** → fill in drug name, batch number, expiry date
-2. Click **Register Batch on Blockchain** → QR code modal pops up
-3. New batch appears in **Recent Batches** list — ready to verify
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    Frontend (SPA)                    │
-│         HTML5 / CSS3 / Vanilla JavaScript            │
-│                                                     │
-│  ┌──────────┐ ┌────────────┐ ┌───────┐ ┌─────────┐ │
-│  │  Verify   │ │ Dashboard  │ │ Track │ │  About  │ │
-│  └────┬─────┘ └─────┬──────┘ └───┬───┘ └─────────┘ │
-│       │             │            │                  │
-│  ┌────▼─────────────▼────────────▼───┐              │
-│  │     ethers.js / Demo Mode         │              │
-│  └────────────────┬──────────────────┘              │
-└───────────────────┼─────────────────────────────────┘
-                    │
-        ┌───────────▼───────────┐
-        │   DrugRegistry.sol    │
-        │   (Solidity 0.8.24)   │
-        │                       │
-        │ • registerParticipant │
-        │ • registerDrugBatch   │
-        │ • transferCustody     │
-        │ • verifyDrugView      │
-        │ • reportCounterfeit   │
-        │ • getCustodyChain     │
-        └───────────────────────┘
-        Polygon / Hardhat Local
-```
-
-### Dual-Mode System
-
-| Mode | When | How It Works |
-|------|------|-------------|
-| **Demo Mode** | Default (no wallet) | Pre-loaded data, instant responses, no blockchain needed |
-| **Live Mode** | MetaMask connected | Real smart contract calls on Hardhat or Polygon |
-
----
-
-## 📁 Project Structure
-
-```
-pharmachain/
-├── contracts/
-│   └── DrugRegistry.sol       # Core smart contract (350 lines)
-├── scripts/
-│   └── deploy.js              # Deployment + demo data seeding
-├── test/
-│   └── DrugRegistry.test.js   # 19 comprehensive tests
-├── frontend/
-│   ├── index.html             # Single-page app (4 pages)
-│   ├── app.js                 # Frontend logic + demo mode
-│   ├── styles.css             # Premium dark theme (1225 lines)
-│   └── spec.md                # UI specification for future devs
-├── hardhat.config.js          # Hardhat v2 configuration
-├── deployment.json            # Auto-generated contract address
-├── PITCH.md                   # 2-minute pitch script
-├── JUDGE_QA.md                # Top 3 judge Q&A prep
-└── README.md                  # This file
-```
-
----
-
-## 🔒 Smart Contract Features
-
-| Feature | Description |
-|---------|------------|
-| **Role-based access** | Manufacturer, Distributor, Pharmacy — each with specific permissions |
-| **Batch registration** | Drug name, batch number, expiry date, IPFS metadata hash |
-| **Custody transfer** | Enforces supply chain order: Manufacturer → Distributor → Pharmacy |
-| **Free verification** | `verifyDrugView()` is a view function — zero gas cost for consumers |
-| **Counterfeit reporting** | Anonymous on-chain reports with GPS coordinates |
-| **Event-driven** | 4 events for frontend reactivity and audit trails |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Smart Contract | Solidity 0.8.24 |
-| Blockchain | Polygon (Hardhat local for dev) |
-| Frontend | HTML5, CSS3, Vanilla JS |
-| Contract Interaction | ethers.js v6 |
-| QR Generation | qrcode.js |
-| QR Scanning | html5-qrcode v2.3.8 |
-| Testing | Hardhat + Chai + Mocha |
-
----
-
-## 📊 Test Results
 
 ```
   DrugRegistry
@@ -230,28 +132,93 @@ pharmachain/
     Counterfeit Reporting
       ✔ Should emit CounterfeitReported event
 
-  19 passing (2s)
+  19 passing
 ```
 
 ---
 
-## 🎤 Demo Batch IDs
+## Dual-Mode Architecture
 
-| Batch ID | Drug | Status |
-|----------|------|--------|
-| `DWT-AMX-2026-0528` | Amoxicillin 500mg | ✅ Authentic |
-| `DWT-PAR-2026-0415` | Paracetamol 250mg | ✅ Authentic |
-| `DWT-ART-2025-0812` | Artemether-Lumefantrine | ⚠️ Expired |
-| `FAKE-DRUG-123` | — | ❌ Counterfeit |
+| Mode | When | How It Works |
+|------|------|-------------|
+| **Demo Mode** | Default (no wallet) | Pre-loaded data, simulated responses, no blockchain needed |
+| **Live Mode** | MetaMask connected | Real smart contract calls on Hardhat local or Polygon |
 
----
-
-## 🧑‍💻 Team
-
-Built at the **Zone01 Kisumu Blockchain Hackathon**, May 2026.
+The system seamlessly switches between modes. All UI features work identically in both modes — live mode simply reads/writes real on-chain data.
 
 ---
 
-## 📜 License
+## Smart Contract Features
+
+| Feature | Description |
+|---------|-------------|
+| **Role-based access control** | Owner, Manufacturer, Distributor, Pharmacy — each with specific permissions |
+| **Batch registration** | Drug name, batch number, expiry date, IPFS metadata hash |
+| **Custody transfer enforcement** | Supply chain order: Manufacturer → Distributor → Pharmacy |
+| **Free verification** | `verifyDrugView()` is a view function — zero gas cost for consumers |
+| **Counterfeit reporting** | On-chain reports with GPS coordinates / location data |
+| **Event-driven architecture** | 5 events for frontend reactivity and audit trails |
+| **Full enumeration** | Batch IDs and participants are enumerable for dashboard views |
+
+---
+
+## Project Structure
+
+```
+dawatrace/
+├── contracts/
+│   └── DrugRegistry.sol           # Core smart contract
+├── scripts/
+│   └── deploy.js                  # Deployment + data seeding (8 batches)
+├── test/
+│   └── DrugRegistry.test.js       # 19 comprehensive tests
+├── frontend/
+│   ├── index.html                 # SPA shell with semantic HTML5
+│   ├── app.js                     # Full application logic (dual-mode)
+│   └── styles.css                 # Responsive design system
+├── hardhat.config.js              # Hardhat configuration
+├── package.json                   # Scripts and dependencies
+├── deployment.json                # Auto-generated contract address
+└── README.md
+```
+
+---
+
+## Demo Batch IDs
+
+| Batch ID | Drug | Manufacturer | Status |
+|----------|------|-------------|--------|
+| `DWT-AMX-2026-0528` | Amoxicillin 500mg | Kenya Pharma Ltd | ✅ Authentic |
+| `DWT-CIP-2025-1120` | Ciprofloxacin 500mg | Kenya Pharma Ltd | ✅ Authentic |
+| `DWT-IBU-2026-0610` | Ibuprofen 400mg | Beta Healthcare Intl | ✅ Authentic |
+| `DWT-OME-2026-0915` | Omeprazole 20mg | Kenya Pharma Ltd | ✅ Authentic |
+| `DWT-MET-2026-0301` | Metformin 500mg | Universal Corp of Kenya | ✅ Authentic |
+| `DWT-AZI-2026-0130` | Azithromycin 250mg | Beta Healthcare Intl | ✅ Authentic |
+| `DWT-PAR-2026-0415` | Paracetamol 250mg | Beta Healthcare Intl | ✅ Authentic |
+| `DWT-ART-2025-0812` | Artemether-Lumefantrine | Universal Corp of Kenya | ⚠️ Expired |
+| `FAKE-DRUG-123` | — | — | ❌ Counterfeit |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Smart Contract | Solidity 0.8.24 |
+| Blockchain | Polygon (Hardhat local for development) |
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Contract Interaction | ethers.js v6 |
+| Testing | Hardhat + Chai + Mocha |
+| QR Generation | goqr.me API |
+
+---
+
+## Team
+
+Built at **Zone01 Kisumu**.
+
+---
+
+## License
 
 MIT

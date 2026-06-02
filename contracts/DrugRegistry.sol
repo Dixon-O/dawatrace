@@ -216,10 +216,8 @@ contract DrugRegistry {
         require(bytes(_batchNumber).length > 0, "Batch number required");
         require(_expiryDate > block.timestamp, "Expiry must be in the future");
 
-        // Generate unique batch ID from manufacturer address + batch number
-        bytes32 batchId = keccak256(
-            abi.encodePacked(msg.sender, _batchNumber, block.timestamp)
-        );
+        // Generate unique batch ID from batch number deterministically
+        bytes32 batchId = keccak256(bytes(_batchNumber));
 
         require(!drugBatches[batchId].exists, "Batch ID collision");
 

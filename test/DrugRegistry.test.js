@@ -1,5 +1,5 @@
-const { expect } = require("chai");
-const hre = require("hardhat");
+import { expect } from "chai";
+import hre from "hardhat";
 
 describe("DrugRegistry", function () {
     let registry, owner, manufacturer, distributor, pharmacy, consumer;
