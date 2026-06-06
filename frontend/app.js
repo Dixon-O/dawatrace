@@ -420,31 +420,90 @@ var GlobalLookup = {
 
 var Renderers = {
   landing: function() {
-    var stats = demoMode ? DEMO_DB.stats : {};
-    var vCount = stats.genuine ? (stats.genuine + stats.expired + stats.recalled) : 0;
     return '<section class="hero">' +
       '<div class="container">' +
-        '<div class="hero-badge"><span class="pill pill-accent">Blockchain-Verified</span></div>' +
-        '<h1 class="hero-title">Verify Any Medicine.<br><span class="gradient-text">Instantly.</span></h1>' +
-        '<p class="hero-subtitle">Scan a QR code or barcode to verify pharmaceutical authenticity with blockchain-backed provenance and AI-powered risk scoring.</p>' +
+        '<div class="hero-badge"><span class="pill pill-accent">Blockchain-Verified · AI-Scored · Global Coverage</span></div>' +
+        '<h1 class="hero-title">Protecting Lives Through<br><span class="gradient-text">Verified Medicine.</span></h1>' +
+        '<p class="hero-subtitle">DawaTrace uses blockchain provenance and AI risk scoring to combat counterfeit pharmaceuticals — the silent crisis killing over 250,000 people annually. Scan any medicine, from any country, in seconds.</p>' +
         '<div class="hero-actions">' +
-          '<button class="btn btn-primary btn-lg" onclick="navigate(\'/verify\')">🔍 Verify Medicine</button>' +
-          '<button class="btn btn-soft btn-lg" onclick="navigate(\'/track\')">📦 Track Supply Chain</button>' +
-        '</div>' +
-        '<div class="stats-grid mt-2xl">' +
-          '<div class="stat-card"><div class="stat-number" id="stat-products">' + (demoMode ? (DEMO_DB.products.length || 0) : '—') + '</div><div class="stat-label">Products Tracked</div></div>' +
-          '<div class="stat-card"><div class="stat-number" id="stat-verifications">' + (vCount || '—') + '</div><div class="stat-label">Verifications</div></div>' +
-          '<div class="stat-card"><div class="stat-number">' + (DEMO_DB.metadata.regions ? Object.keys(DEMO_DB.metadata.regions).length : 3) + '</div><div class="stat-label">Regions Covered</div></div>' +
-          '<div class="stat-card"><div class="stat-number" id="stat-recalls">' + (DEMO_DB.recalledLots ? DEMO_DB.recalledLots.length : 0) + '</div><div class="stat-label">Active Recalls</div></div>' +
+          '<button class="btn btn-primary btn-lg" onclick="navigate(\'/verify\')">🔍 Verify Medicine Now</button>' +
+          '<button class="btn btn-soft btn-lg" onclick="navigate(\'/dashboard\')">📊 View Dashboard</button>' +
         '</div>' +
       '</div>' +
     '</section>' +
-    '<section class="container mt-2xl mb-2xl">' +
-      '<h2 class="text-center mb-xl">How It Works</h2>' +
+
+    '<section class="container mt-2xl mb-xl">' +
+      '<div class="text-center mb-xl">' +
+        '<h2>How It Works</h2>' +
+        '<p class="text-secondary mt-sm" style="max-width:560px;margin-left:auto;margin-right:auto">Three steps between uncertainty and confidence. No app download, no registration — just point and scan.</p>' +
+      '</div>' +
       '<div class="grid-3">' +
-        '<div class="step-card"><div class="step-icon">📷</div><h3>Scan</h3><p>Point your camera at a QR code, barcode, or GS1 DataMatrix on the medicine packaging.</p></div>' +
-        '<div class="step-card"><div class="step-icon">🧠</div><h3>Analyze</h3><p>Our risk engine checks cryptographic signatures, supply chain history, recall databases, and duplicate patterns.</p></div>' +
-        '<div class="step-card"><div class="step-icon">🛡️</div><h3>Trust Score</h3><p>Get a 0–100 confidence score with detailed risk signals. Not just "valid" or "fake" — real evidence.</p></div>' +
+        '<div class="card text-center" style="padding:32px 24px">' +
+          '<div style="font-size:40px;margin-bottom:16px">📷</div>' +
+          '<h3 style="margin-bottom:8px">Scan</h3>' +
+          '<p class="text-secondary text-sm">Point your camera at a QR code, barcode, or GS1 DataMatrix on any medicine package — works worldwide.</p>' +
+        '</div>' +
+        '<div class="card text-center" style="padding:32px 24px">' +
+          '<div style="font-size:40px;margin-bottom:16px">🧠</div>' +
+          '<h3 style="margin-bottom:8px">Analyze</h3>' +
+          '<p class="text-secondary text-sm">Our risk engine cross-references blockchain records, global registries (FDA, WHO, EMA), recall databases, and scan patterns.</p>' +
+        '</div>' +
+        '<div class="card text-center" style="padding:32px 24px">' +
+          '<div style="font-size:40px;margin-bottom:16px">🛡️</div>' +
+          '<h3 style="margin-bottom:8px">Trust Score</h3>' +
+          '<p class="text-secondary text-sm">Receive a 0–100 trust score with transparent risk signals — not just pass/fail, but evidence you can act on.</p>' +
+        '</div>' +
+      '</div>' +
+    '</section>' +
+
+    '<section style="background:var(--c-surface);border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border);padding:48px 0">' +
+      '<div class="container">' +
+        '<div class="grid-3" style="gap:32px">' +
+          '<div>' +
+            '<div style="font-size:24px;margin-bottom:12px">🎯</div>' +
+            '<h3 style="margin-bottom:8px;color:var(--c-accent)">Mission</h3>' +
+            '<p class="text-secondary text-sm" style="line-height:1.7">To eliminate counterfeit pharmaceuticals from supply chains by making verification instant, free, and accessible to every consumer — regardless of connectivity or technical literacy.</p>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:24px;margin-bottom:12px">🔭</div>' +
+            '<h3 style="margin-bottom:8px;color:var(--c-accent)">Vision</h3>' +
+            '<p class="text-secondary text-sm" style="line-height:1.7">A world where no one dies from fake medicine. Every pill traceable from factory floor to patient hand, with an immutable chain of custody that counterfeiters cannot forge.</p>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:24px;margin-bottom:12px">⚡</div>' +
+            '<h3 style="margin-bottom:8px;color:var(--c-accent)">Approach</h3>' +
+            '<p class="text-secondary text-sm" style="line-height:1.7">Blockchain is invisible to the user. No crypto knowledge needed. Scan → Score → Act. We connect global registries (OpenFDA, RxNorm, WHO) with on-chain provenance to deliver trust in seconds.</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</section>' +
+
+    '<section class="container mt-xl mb-xl">' +
+      '<div class="grid-2" style="gap:24px;align-items:center">' +
+        '<div>' +
+          '<span class="pill pill-purple mb-md" style="display:inline-block">Global Coverage</span>' +
+          '<h2 style="margin-bottom:12px">200+ Countries.<br>40+ Regulatory Bodies.</h2>' +
+          '<p class="text-secondary" style="line-height:1.7;margin-bottom:16px">Scan a barcode from Kenya, Nigeria, India, UAE, Brazil, the EU, or anywhere else — DawaTrace instantly identifies the country of origin, regulatory authority, and cross-references against global pharmaceutical intelligence.</p>' +
+          '<button class="btn btn-primary" onclick="navigate(\'/verify\')">Try It Now →</button>' +
+        '</div>' +
+        '<div class="grid-2" style="gap:12px">' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇰🇪</div><div class="text-sm font-bold">Kenya PPB</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇳🇬</div><div class="text-sm font-bold">Nigeria NAFDAC</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇮🇳</div><div class="text-sm font-bold">India CDSCO</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇺🇸</div><div class="text-sm font-bold">US FDA</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇦🇪</div><div class="text-sm font-bold">UAE MOH</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇧🇷</div><div class="text-sm font-bold">Brazil ANVISA</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇪🇺</div><div class="text-sm font-bold">EU EMA</div></div>' +
+          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇿🇦</div><div class="text-sm font-bold">SA SAHPRA</div></div>' +
+        '</div>' +
+      '</div>' +
+    '</section>' +
+
+    '<section style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);color:white;padding:48px 0;text-align:center">' +
+      '<div class="container">' +
+        '<h2 style="margin-bottom:8px;color:white">Ready to Verify?</h2>' +
+        '<p style="color:#94A3B8;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto">Scan any medicine barcode or QR code from any country. No registration, no app download — just open and scan.</p>' +
+        '<button class="btn btn-primary btn-lg" onclick="navigate(\'/verify\')">🔍 Start Verification</button>' +
       '</div>' +
     '</section>';
   },
@@ -581,7 +640,7 @@ var Renderers = {
     var timelineHtml = '<div id="result-timeline" class="mt-lg"></div>';
 
     var actionsHtml = '<div class="result-actions mt-lg" style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button class="btn btn-primary" onclick="navigate(\'/verify\')">← Verify Another</button>' +
+      '<button class="btn btn-primary" onclick="UI.renderWith(Renderers.verify)">← Verify Another</button>' +
       (r.status === 'COUNTERFEIT' || r.status === 'SUSPICIOUS' ? '<button class="btn btn-danger" onclick="UI.reportCounterfeit(\'' + (query || '') + '\')">🚨 Report Counterfeit</button>' : '') +
       (data && data.exists !== false ? '<button class="btn btn-soft" onclick="navigate(\'/track?id=' + (query || '') + '\')">📦 Track Supply Chain</button>' : '') +
     '</div>';
@@ -1012,7 +1071,7 @@ var BlockchainService = {
     var banner = document.getElementById('demo-banner');
     var netPill = document.getElementById('network-status');
     if (btn) btn.innerHTML = isConnected ? '🟢 Connected' : '🔗 Connect Wallet';
-    if (banner) banner.style.display = demoMode ? '' : 'none';
+    if (banner) banner.style.display = 'none';
     if (netPill) netPill.textContent = demoMode ? 'Demo Mode' : 'Live';
   },
 

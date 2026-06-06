@@ -41,18 +41,14 @@
       <a href="#/verify" data-route="/verify">Verify</a>
       <a href="#/track" data-route="/track">Track</a>
       <a href="#/dashboard" data-route="/dashboard">Dashboard</a>
-      <a href="#/recalls" data-route="/recalls">Recalls</a>
-      <a href="#/analytics" data-route="/analytics">Analytics</a>
     </div>
     <div class="topbar-actions" id="topbar-actions">
       <button class="btn btn-soft btn-sm" id="wallet-btn" onclick="BlockchainService.connectWallet()">🔗 Connect Wallet</button>
     </div>
   </nav>
 
-  <!-- Demo Mode Banner -->
-  <div class="demo-banner" id="demo-banner">
-    🔬 Demo Mode — 1,000 FDA/EMA/Kenya pharmaceutical products loaded for verification
-  </div>
+  <!-- Demo Mode Banner (hidden by default) -->
+  <div class="demo-banner" id="demo-banner" style="display:none"></div>
 
   <!-- Main Content Area -->
   <main id="app" class="page-content">
