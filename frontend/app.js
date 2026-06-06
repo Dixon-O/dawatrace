@@ -532,10 +532,10 @@ var Renderers = {
         '<p class="text-secondary">Scan a QR code, barcode, or enter a serial number to check authenticity</p>' +
       '</div>' +
       '<div class="verify-tabs mb-lg">' +
-        '<button class="tab-btn active" onclick="UI.switchVerifyTab(\'scan\')" id="tab-scan">📷 Camera Scan</button>' +
-        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'upload\')" id="tab-upload">📁 Upload Image</button>' +
-        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'manual\')" id="tab-manual">⌨️ Manual Entry</button>' +
-        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'sms\')" id="tab-sms">📱 SMS/USSD</button>' +
+        '<button class="tab-btn active" onclick="UI.switchVerifyTab(\'scan\')" id="tab-scan"><span class="tab-icon">📷</span><span>Camera Scan</span></button>' +
+        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'upload\')" id="tab-upload"><span class="tab-icon">📁</span><span>Upload Image</span></button>' +
+        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'manual\')" id="tab-manual"><span class="tab-icon">⌨️</span><span>Manual Entry</span></button>' +
+        '<button class="tab-btn" onclick="UI.switchVerifyTab(\'sms\')" id="tab-sms"><span class="tab-icon">📱</span><span>SMS / USSD</span></button>' +
       '</div>' +
       '<div class="verify-content">' +
         '<div id="verify-scan" class="verify-panel active">' +
