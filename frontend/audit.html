@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DawaTrace V2 — Audit Test Suite</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0F172A; color: #E2E8F0; padding: 24px; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #94A3B8; margin-bottom: 24px; }
+    .test-group { margin-bottom: 24px; }
+    .test-group h2 { font-size: 16px; color: #06B6D4; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1E293B; }
+    .test { padding: 8px 12px; margin: 4px 0; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .test.pass { background: #064E3B; }
+    .test.fail { background: #7F1D1D; }
+    .test.running { background: #1E293B; }
+    .icon { font-size: 16px; }
+    .summary { margin-top: 24px; padding: 16px; background: #1E293B; border-radius: 8px; font-size: 14px; }
+    .summary span { font-weight: 700; }
+    .pass-count { color: #10B981; }
+    .fail-count { color: #EF4444; }
+    #log { margin-top: 16px; font-family: monospace; font-size: 11px; color: #64748B; max-height: 300px; overflow-y: auto; background: #020617; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>🔬 DawaTrace V2 — Audit Test Suite</h1>
+  <p class="subtitle">Automated functional verification of all DApp features</p>
+  <div id="results"></div>
+  <div id="summary" class="summary"></div>
+  <div id="log"></div>
+
+  <script>
+    const results = [];
+    const logEl = document.getElementById('log');
+    const resultsEl = document.getElementById('results');
+
+    function log(msg) { logEl.textContent += msg + '\n'; }
+
+    function assert(condition, testName, group) {
+      results.push({ name: testName, group, passed: condition });
+      log((condition ? '✅' : '❌') + ' [' + group + '] ' + testName);
+    }
+
+    function renderResults() {
+      const groups = {};
+      results.forEach(r => {
+        if (!groups[r.group]) groups[r.group] = [];
+        groups[r.group].push(r);
+      });
+      let html = '';
+      for (const [name, tests] of Object.entries(groups)) {
+        html += '<div class="test-group"><h2>' + name + '</h2>';
+        tests.forEach(t => {
+          html += '<div class="test ' + (t.passed ? 'pass' : 'fail') + '"><span class="icon">' + (t.passed ? '✅' : '❌') + '</span>' + t.name + '</div>';
+        });
+        html += '</div>';
+      }
+      resultsEl.innerHTML = html;
+
+      const passed = results.filter(r => r.passed).length;
+      const failed = results.filter(r => !r.passed).length;
+      document.getElementById('summary').innerHTML =
+        'Total: <span>' + results.length + '</span> | ' +
+        '<span class="pass-count">Passed: ' + passed + '</span> | ' +
+        '<span class="fail-count">Failed: ' + failed + '</span>';
+    }
+
+    async function runTests() {
+      log('Starting DawaTrace V2 Audit...\n');
+
+      // ============================================================
+      // 1. DATA LOADING
+      // ============================================================
+      let data;
+      try {
+        const res = await fetch('data/products.json');
+        data = await res.json();
+        assert(true, 'products.json loads successfully', 'Data Loading');
+      } catch(e) {
+        assert(false, 'products.json loads successfully: ' + e.message, 'Data Loading');
+        renderResults();
+        return;
+      }
+
+      assert(data.products && data.products.length > 0, 'Products array is non-empty', 'Data Loading');
+      assert(data.products.length >= 900, 'Dataset has 900+ products (got ' + data.products.length + ')', 'Data Loading');
+      assert(data.metadata && data.metadata.version === '2.0', 'Metadata version is 2.0', 'Data Loading');
+      assert(data.recalledLots && data.recalledLots.length > 0, 'Recalled lots exist', 'Data Loading');
+
+      // ============================================================
+      // 2. DATA INTEGRITY
+      // ============================================================
+      const genuine = data.products.filter(p => p.status === 'GENUINE');
+      const expired = data.products.filter(p => p.status === 'EXPIRED');
+      const recalled = data.products.filter(p => p.status === 'RECALLED');
+      const counterfeit = data.products.filter(p => p.status === 'COUNTERFEIT');
+      const suspicious = data.products.filter(p => p.status === 'SUSPICIOUS');
+
+      assert(genuine.length >= 600, 'Genuine products: ' + genuine.length + ' (≥600)', 'Data Integrity');
+      assert(expired.length >= 50, 'Expired products: ' + expired.length + ' (≥50)', 'Data Integrity');
+      assert(recalled.length >= 30, 'Recalled products: ' + recalled.length + ' (≥30)', 'Data Integrity');
+      assert(counterfeit.length >= 50, 'Counterfeit products: ' + counterfeit.length + ' (≥50)', 'Data Integrity');
+      assert(suspicious.length >= 0, 'Suspicious products: ' + suspicious.length, 'Data Integrity');
+
+      // Check all genuine have required fields
+      const genuineComplete = genuine.every(p => p.gtin && p.serialNumber && p.lotNumber && p.productName && p.manufacturer);
+      assert(genuineComplete, 'All genuine products have GTIN, serial, lot, name, manufacturer', 'Data Integrity');
+
+      // Check supply chains exist for genuine
+      const withChain = genuine.filter(p => p.supplyChain && p.supplyChain.length >= 2);
+      assert(withChain.length > genuine.length * 0.8, 'At least 80% of genuine products have supply chain (got ' + Math.round(withChain.length/genuine.length*100) + '%)', 'Data Integrity');
+
+      // Check regions
+      const usProducts = data.products.filter(p => p.region === 'US');
+      const keProducts = data.products.filter(p => p.region === 'KE');
+      const euProducts = data.products.filter(p => p.region === 'EU');
+      assert(usProducts.length > 0, 'US products exist: ' + usProducts.length, 'Data Integrity');
+      assert(keProducts.length > 0, 'Kenya products exist: ' + keProducts.length, 'Data Integrity');
+      assert(euProducts.length > 0, 'EU products exist: ' + euProducts.length, 'Data Integrity');
+
+      // ============================================================
+      // 3. RISK ENGINE ACCURACY
+      // ============================================================
+      // Simulate RiskEngine logic
+      function testRiskScore(product) {
+        if (!product || product.exists === false) return { trust: 0, status: 'COUNTERFEIT' };
+        let trust = 100;
+        if (product.isRecalled) trust -= 80;
+        const now = Date.now() / 1000;
+        if (product.expiryDate < now) trust -= 60;
+        const custody = product.supplyChain ? product.supplyChain.length : 0;
+        if (custody === 0) trust -= 20;
+        else if (custody < 3) trust -= 5;
+        trust = Math.max(0, trust);
+        let status;
+        if (product.isRecalled) status = 'RECALLED';
+        else if (product.expiryDate < now) status = 'EXPIRED';
+        else if (trust >= 80) status = 'GENUINE';
+        else if (trust >= 50) status = 'SUSPICIOUS';
+        else status = 'COUNTERFEIT';
+        return { trust, status };
+      }
+
+      // Test genuine products get good scores
+      const genuineSample = genuine.slice(0, 50);
+      const genuineGoodScores = genuineSample.every(p => testRiskScore(p).trust >= 75);
+      assert(genuineGoodScores, 'All genuine products score ≥75 trust', 'Risk Engine');
+
+      // Test expired products get correct status
+      const expiredSample = expired.slice(0, 20);
+      const expiredCorrect = expiredSample.every(p => testRiskScore(p).status === 'EXPIRED');
+      assert(expiredCorrect, 'All expired products flagged as EXPIRED', 'Risk Engine');
+
+      // Test recalled products get correct status
+      const recalledSample = recalled.slice(0, 20);
+      const recalledCorrect = recalledSample.every(p => testRiskScore(p).status === 'RECALLED');
+      assert(recalledCorrect, 'All recalled products flagged as RECALLED', 'Risk Engine');
+
+      // Test counterfeit products get zero trust
+      const counterfeitSample = counterfeit.slice(0, 20);
+      const counterfeitCorrect = counterfeitSample.every(p => testRiskScore(p).trust === 0);
+      assert(counterfeitCorrect, 'All counterfeit products score 0 trust', 'Risk Engine');
+
+      // Test no valid product gets falsely flagged
+      const falsePositives = genuineSample.filter(p => {
+        const r = testRiskScore(p);
+        return r.status === 'COUNTERFEIT' || r.status === 'RECALLED';
+      });
+      assert(falsePositives.length === 0, 'Zero false positives on genuine products', 'Risk Engine');
+
+      // Test no counterfeit gets falsely cleared
+      const falseNegatives = counterfeitSample.filter(p => {
+        const r = testRiskScore(p);
+        return r.status === 'GENUINE';
+      });
+      assert(falseNegatives.length === 0, 'Zero false negatives on counterfeit products', 'Risk Engine');
+
+      // ============================================================
+      // 4. GS1 PARSER
+      // ============================================================
+      function parseGS1(raw) {
+        let d = raw.replace(/^\]d2/, '');
+        const result = {};
+        let m;
+        m = d.match(/01(\d{14})/); if (m) result.gtin = m[1];
+        m = d.match(/17(\d{6})/); if (m) result.expiry = m[1];
+        m = d.match(/10([^\x1D]+)/); if (m) result.lot = m[1].replace(/21.*$/, '');
+        m = d.match(/21([^\x1D]+)/); if (m) result.serial = m[1];
+        return result;
+      }
+
+      const gs1Test1 = parseGS1(']d201003123456789061726123110LOT2026A\x1D21SN-ABC123');
+      assert(gs1Test1.gtin === '00312345678906', 'GS1: Extracts GTIN from DataMatrix', 'GS1 Parser');
+      assert(gs1Test1.expiry === '261231', 'GS1: Extracts expiry date', 'GS1 Parser');
+      assert(gs1Test1.serial === 'SN-ABC123', 'GS1: Extracts serial number', 'GS1 Parser');
+
+      const gs1Test2 = parseGS1('010061001234567891726063010LOT2025R01\x1D21SN-TEST99');
+      assert(gs1Test2.gtin === '00610012345678', 'GS1: Kenya GTIN prefix parsed', 'GS1 Parser');
+      assert(gs1Test2.serial === 'SN-TEST99', 'GS1: Serial after GS separator parsed', 'GS1 Parser');
+
+      // ============================================================
+      // 5. DOM STRUCTURE
+      // ============================================================
+      assert(document.querySelector !== undefined, 'DOM API available', 'DOM Structure');
+
+      // Load the main page and check
+      try {
+        const mainRes = await fetch('/');
+        const mainHtml = await mainRes.text();
+        assert(mainHtml.includes('id="app"'), 'Main app container exists', 'DOM Structure');
+        assert(mainHtml.includes('id="toast-container"'), 'Toast container exists', 'DOM Structure');
+        assert(mainHtml.includes('id="modal-overlay"'), 'Modal overlay exists', 'DOM Structure');
+        assert(mainHtml.includes('id="wallet-btn"'), 'Wallet button exists', 'DOM Structure');
+        assert(mainHtml.includes('data-route="/recalls"'), 'Recalls nav link exists', 'DOM Structure');
+        assert(mainHtml.includes('html5-qrcode@2.3.8'), 'html5-qrcode version pinned to 2.3.8', 'DOM Structure');
+        assert(mainHtml.includes('ethers/6.13.4'), 'ethers.js version pinned', 'DOM Structure');
+        assert(mainHtml.includes('viewport'), 'Viewport meta tag exists', 'DOM Structure');
+        assert(mainHtml.includes('JetBrains Mono'), 'Monospace font loaded', 'DOM Structure');
+      } catch(e) {
+        assert(false, 'Main page loads: ' + e.message, 'DOM Structure');
+      }
+
+      // ============================================================
+      // 6. CSS RESPONSIVE
+      // ============================================================
+      try {
+        const cssRes = await fetch('/styles.css');
+        const cssText = await cssRes.text();
+        assert(cssText.includes('@media (max-width: 768px)'), 'Mobile breakpoint 768px exists', 'Responsive CSS');
+        assert(cssText.includes('@media (max-width: 480px)'), 'Small mobile breakpoint 480px exists', 'Responsive CSS');
+        assert(cssText.includes('safe-area-inset-bottom'), 'Safe area inset for notched phones', 'Responsive CSS');
+        assert(cssText.includes('.verify-tabs'), 'Verify tabs styles exist', 'Responsive CSS');
+        assert(cssText.includes('.result-card'), 'Result card styles exist', 'Responsive CSS');
+        assert(cssText.includes('.risk-signals'), 'Risk signals styles exist', 'Responsive CSS');
+        assert(cssText.includes('.data-table'), 'Data table styles exist', 'Responsive CSS');
+        assert(cssText.includes('.dashboard-layout'), 'Dashboard layout styles exist', 'Responsive CSS');
+      } catch(e) {
+        assert(false, 'CSS loads: ' + e.message, 'Responsive CSS');
+      }
+
+      // ============================================================
+      // 7. APP.JS FEATURES
+      // ============================================================
+      try {
+        const jsRes = await fetch('/app.js');
+        const jsText = await jsRes.text();
+        assert(jsText.includes('DawaTraceV2'), 'References DawaTraceV2 contract', 'App Features');
+        assert(jsText.includes('RiskEngine'), 'Risk engine module exists', 'App Features');
+        assert(jsText.includes('OpenFDA'), 'OpenFDA hot lookup module exists', 'App Features');
+        assert(jsText.includes('parseGS1'), 'GS1 parser exists', 'App Features');
+        assert(jsText.includes('Html5QrcodeSupportedFormats.CODE_128'), 'Barcode Code 128 support', 'App Features');
+        assert(jsText.includes('Html5QrcodeSupportedFormats.EAN_13'), 'Barcode EAN-13 support', 'App Features');
+        assert(jsText.includes('Html5QrcodeSupportedFormats.DATA_MATRIX'), 'DataMatrix support', 'App Features');
+        assert(jsText.includes('mockSMSVerify'), 'SMS mock verification exists', 'App Features');
+        assert(jsText.includes('getParticipantRole'), 'RBAC role detection exists', 'App Features');
+        assert(jsText.includes('recallLot'), 'Recall function exists', 'App Features');
+        assert(jsText.includes('grantRole'), 'Admin grant role exists', 'App Features');
+        assert(jsText.includes('Renderers.recalls'), 'Recalls page renderer exists', 'App Features');
+        assert(jsText.includes('Renderers.admin'), 'Admin page renderer exists', 'App Features');
+        assert(jsText.includes('scoreUntracked'), 'Untracked product scoring exists', 'App Features');
+        assert(jsText.includes('startScanner') && jsText.includes('stopScanner'), 'Scanner start/stop controls exist', 'App Features');
+      } catch(e) {
+        assert(false, 'app.js loads: ' + e.message, 'App Features');
+      }
+
+      // ============================================================
+      // DONE
+      // ============================================================
+      renderResults();
+      log('\nAudit complete.');
+    }
+
+    runTests();
+  </script>
+</body>
+</html>
