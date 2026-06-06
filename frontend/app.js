@@ -53,6 +53,21 @@ var currentRole = 'CONSUMER';
 var DEMO_DB = { products: [], recalledLots: [], stats: {}, metadata: {} };
 var dataLoaded = false;
 
+// Build a run of real flag <img> tags from ISO-2 country codes
+function flagImgs(codes) {
+  return codes.map(function(c) {
+    var special = c === 'eu' ? 'https://flagcdn.com/w40/eu.png'
+                : c === 'hk' ? 'https://flagcdn.com/w40/hk.png'
+                : c === 'mo' ? 'https://flagcdn.com/w40/mo.png'
+                : c === 'pr' ? 'https://flagcdn.com/w40/pr.png'
+                : c === 'gu' ? 'https://flagcdn.com/w40/gu.png'
+                : c === 'xk' ? 'https://flagcdn.com/w40/xk.png'
+                : 'https://flagcdn.com/w40/' + c.toLowerCase() + '.png';
+    return '<img src="' + special + '" alt="' + c.toUpperCase() + '" loading="lazy">';
+  }).join('');
+}
+
+
 // ============================================================
 //                     UTILITIES
 // ============================================================
@@ -487,38 +502,14 @@ var Renderers = {
           '<button class="btn btn-primary" onclick="navigate(\'/verify\')">Try It Now →</button>' +
         '</div>' +
         '<div class="flag-collage" id="flag-collage">' +
-          '<div class="flag-track flag-track-1">' +
-            '<span>🇦🇫</span><span>🇦🇱</span><span>🇩🇿</span><span>🇦🇩</span><span>🇦🇴</span><span>🇦🇬</span><span>🇦🇷</span><span>🇦🇲</span><span>🇦🇺</span><span>🇦🇹</span><span>🇦🇿</span><span>🇧🇸</span><span>🇧🇭</span><span>🇧🇩</span><span>🇧🇧</span><span>🇧🇾</span><span>🇧🇪</span><span>🇧🇿</span><span>🇧🇯</span><span>🇧🇹</span><span>🇧🇴</span><span>🇧🇦</span><span>🇧🇼</span><span>🇧🇷</span><span>🇧🇳</span>' +
-            '<span>🇦🇫</span><span>🇦🇱</span><span>🇩🇿</span><span>🇦🇩</span><span>🇦🇴</span><span>🇦🇬</span><span>🇦🇷</span><span>🇦🇲</span><span>🇦🇺</span><span>🇦🇹</span><span>🇦🇿</span><span>🇧🇸</span><span>🇧🇭</span><span>🇧🇩</span><span>🇧🇧</span><span>🇧🇾</span><span>🇧🇪</span><span>🇧🇿</span><span>🇧🇯</span><span>🇧🇹</span><span>🇧🇴</span><span>🇧🇦</span><span>🇧🇼</span><span>🇧🇷</span><span>🇧🇳</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-2">' +
-            '<span>🇧🇬</span><span>🇧🇫</span><span>🇧🇮</span><span>🇨🇻</span><span>🇰🇭</span><span>🇨🇲</span><span>🇨🇦</span><span>🇨🇫</span><span>🇹🇩</span><span>🇨🇱</span><span>🇨🇳</span><span>🇨🇴</span><span>🇰🇲</span><span>🇨🇬</span><span>🇨🇩</span><span>🇨🇷</span><span>🇭🇷</span><span>🇨🇺</span><span>🇨🇾</span><span>🇨🇿</span><span>🇩🇰</span><span>🇩🇯</span><span>🇩🇲</span><span>🇩🇴</span><span>🇪🇨</span>' +
-            '<span>🇧🇬</span><span>🇧🇫</span><span>🇧🇮</span><span>🇨🇻</span><span>🇰🇭</span><span>🇨🇲</span><span>🇨🇦</span><span>🇨🇫</span><span>🇹🇩</span><span>🇨🇱</span><span>🇨🇳</span><span>🇨🇴</span><span>🇰🇲</span><span>🇨🇬</span><span>🇨🇩</span><span>🇨🇷</span><span>🇭🇷</span><span>🇨🇺</span><span>🇨🇾</span><span>🇨🇿</span><span>🇩🇰</span><span>🇩🇯</span><span>🇩🇲</span><span>🇩🇴</span><span>🇪🇨</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-3">' +
-            '<span>🇪🇬</span><span>🇸🇻</span><span>🇬🇶</span><span>🇪🇷</span><span>🇪🇪</span><span>🇸🇿</span><span>🇪🇹</span><span>🇫🇯</span><span>🇫🇮</span><span>🇫🇷</span><span>🇬🇦</span><span>🇬🇲</span><span>🇬🇪</span><span>🇩🇪</span><span>🇬🇭</span><span>🇬🇷</span><span>🇬🇩</span><span>🇬🇹</span><span>🇬🇳</span><span>🇬🇼</span><span>🇬🇾</span><span>🇭🇹</span><span>🇭🇳</span><span>🇭🇺</span><span>🇮🇸</span>' +
-            '<span>🇪🇬</span><span>🇸🇻</span><span>🇬🇶</span><span>🇪🇷</span><span>🇪🇪</span><span>🇸🇿</span><span>🇪🇹</span><span>🇫🇯</span><span>🇫🇮</span><span>🇫🇷</span><span>🇬🇦</span><span>🇬🇲</span><span>🇬🇪</span><span>🇩🇪</span><span>🇬🇭</span><span>🇬🇷</span><span>🇬🇩</span><span>🇬🇹</span><span>🇬🇳</span><span>🇬🇼</span><span>🇬🇾</span><span>🇭🇹</span><span>🇭🇳</span><span>🇭🇺</span><span>🇮🇸</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-4">' +
-            '<span>🇮🇳</span><span>🇮🇩</span><span>🇮🇷</span><span>🇮🇶</span><span>🇮🇪</span><span>🇮🇱</span><span>🇮🇹</span><span>🇯🇲</span><span>🇯🇵</span><span>🇯🇴</span><span>🇰🇿</span><span>🇰🇪</span><span>🇰🇮</span><span>🇰🇵</span><span>🇰🇷</span><span>🇽🇰</span><span>🇰🇼</span><span>🇰🇬</span><span>🇱🇦</span><span>🇱🇻</span><span>🇱🇧</span><span>🇱🇸</span><span>🇱🇷</span><span>🇱🇾</span><span>🇱🇮</span>' +
-            '<span>🇮🇳</span><span>🇮🇩</span><span>🇮🇷</span><span>🇮🇶</span><span>🇮🇪</span><span>🇮🇱</span><span>🇮🇹</span><span>🇯🇲</span><span>🇯🇵</span><span>🇯🇴</span><span>🇰🇿</span><span>🇰🇪</span><span>🇰🇮</span><span>🇰🇵</span><span>🇰🇷</span><span>🇽🇰</span><span>🇰🇼</span><span>🇰🇬</span><span>🇱🇦</span><span>🇱🇻</span><span>🇱🇧</span><span>🇱🇸</span><span>🇱🇷</span><span>🇱🇾</span><span>🇱🇮</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-5">' +
-            '<span>🇱🇹</span><span>🇱🇺</span><span>🇲🇬</span><span>🇲🇼</span><span>🇲🇾</span><span>🇲🇻</span><span>🇲🇱</span><span>🇲🇹</span><span>🇲🇭</span><span>🇲🇷</span><span>🇲🇺</span><span>🇲🇽</span><span>🇫🇲</span><span>🇲🇩</span><span>🇲🇨</span><span>🇲🇳</span><span>🇲🇪</span><span>🇲🇦</span><span>🇲🇿</span><span>🇲🇲</span><span>🇳🇦</span><span>🇳🇷</span><span>🇳🇵</span><span>🇳🇱</span><span>🇳🇿</span>' +
-            '<span>🇱🇹</span><span>🇱🇺</span><span>🇲🇬</span><span>🇲🇼</span><span>🇲🇾</span><span>🇲🇻</span><span>🇲🇱</span><span>🇲🇹</span><span>🇲🇭</span><span>🇲🇷</span><span>🇲🇺</span><span>🇲🇽</span><span>🇫🇲</span><span>🇲🇩</span><span>🇲🇨</span><span>🇲🇳</span><span>🇲🇪</span><span>🇲🇦</span><span>🇲🇿</span><span>🇲🇲</span><span>🇳🇦</span><span>🇳🇷</span><span>🇳🇵</span><span>🇳🇱</span><span>🇳🇿</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-6">' +
-            '<span>🇳🇮</span><span>🇳🇪</span><span>🇳🇬</span><span>🇲🇰</span><span>🇳🇴</span><span>🇴🇲</span><span>🇵🇰</span><span>🇵🇼</span><span>🇵🇸</span><span>🇵🇦</span><span>🇵🇬</span><span>🇵🇾</span><span>🇵🇪</span><span>🇵🇭</span><span>🇵🇱</span><span>🇵🇹</span><span>🇶🇦</span><span>🇷🇴</span><span>🇷🇺</span><span>🇷🇼</span><span>🇰🇳</span><span>🇱🇨</span><span>🇻🇨</span><span>🇼🇸</span><span>🇸🇲</span>' +
-            '<span>🇳🇮</span><span>🇳🇪</span><span>🇳🇬</span><span>🇲🇰</span><span>🇳🇴</span><span>🇴🇲</span><span>🇵🇰</span><span>🇵🇼</span><span>🇵🇸</span><span>🇵🇦</span><span>🇵🇬</span><span>🇵🇾</span><span>🇵🇪</span><span>🇵🇭</span><span>🇵🇱</span><span>🇵🇹</span><span>🇶🇦</span><span>🇷🇴</span><span>🇷🇺</span><span>🇷🇼</span><span>🇰🇳</span><span>🇱🇨</span><span>🇻🇨</span><span>🇼🇸</span><span>🇸🇲</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-7">' +
-            '<span>🇸🇹</span><span>🇸🇦</span><span>🇸🇳</span><span>🇷🇸</span><span>🇸🇱</span><span>🇸🇬</span><span>🇸🇰</span><span>🇸🇮</span><span>🇸🇧</span><span>🇸🇴</span><span>🇿🇦</span><span>🇸🇸</span><span>🇪🇸</span><span>🇱🇰</span><span>🇸🇩</span><span>🇸🇷</span><span>🇸🇪</span><span>🇨🇭</span><span>🇸🇾</span><span>🇹🇼</span><span>🇹🇯</span><span>🇹🇿</span><span>🇹🇭</span><span>🇹🇱</span><span>🇹🇬</span>' +
-            '<span>🇸🇹</span><span>🇸🇦</span><span>🇸🇳</span><span>🇷🇸</span><span>🇸🇱</span><span>🇸🇬</span><span>🇸🇰</span><span>🇸🇮</span><span>🇸🇧</span><span>🇸🇴</span><span>🇿🇦</span><span>🇸🇸</span><span>🇪🇸</span><span>🇱🇰</span><span>🇸🇩</span><span>🇸🇷</span><span>🇸🇪</span><span>🇨🇭</span><span>🇸🇾</span><span>🇹🇼</span><span>🇹🇯</span><span>🇹🇿</span><span>🇹🇭</span><span>🇹🇱</span><span>🇹🇬</span>' +
-          '</div>' +
-          '<div class="flag-track flag-track-8">' +
-            '<span>🇹🇴</span><span>🇹🇹</span><span>🇹🇳</span><span>🇹🇷</span><span>🇹🇲</span><span>🇹🇻</span><span>🇺🇬</span><span>🇺🇦</span><span>🇦🇪</span><span>🇬🇧</span><span>🇺🇸</span><span>🇺🇾</span><span>🇺🇿</span><span>🇻🇺</span><span>🇻🇪</span><span>🇻🇳</span><span>🇾🇪</span><span>🇿🇲</span><span>🇿🇼</span><span>🇪🇺</span><span>🇭🇰</span><span>🇲🇴</span><span>🇵🇷</span><span>🇬🇺</span><span>🇮🇸</span>' +
-            '<span>🇹🇴</span><span>🇹🇹</span><span>🇹🇳</span><span>🇹🇷</span><span>🇹🇲</span><span>🇹🇻</span><span>🇺🇬</span><span>🇺🇦</span><span>🇦🇪</span><span>🇬🇧</span><span>🇺🇸</span><span>🇺🇾</span><span>🇺🇿</span><span>🇻🇺</span><span>🇻🇪</span><span>🇻🇳</span><span>🇾🇪</span><span>🇿🇲</span><span>🇿🇼</span><span>🇪🇺</span><span>🇭🇰</span><span>🇲🇴</span><span>🇵🇷</span><span>🇬🇺</span><span>🇮🇸</span>' +
-          '</div>' +
+          '<div class="flag-track flag-track-1">' + flagImgs(['af','al','dz','ad','ao','ag','ar','am','au','at','az','bs','bh','bd','bb','by','be','bz','bj','bt','bo','ba','bw','br','bn']) + flagImgs(['af','al','dz','ad','ao','ag','ar','am','au','at','az','bs','bh','bd','bb','by','be','bz','bj','bt','bo','ba','bw','br','bn']) + '</div>' +
+          '<div class="flag-track flag-track-2">' + flagImgs(['bg','bf','bi','cv','kh','cm','ca','cf','td','cl','cn','co','km','cg','cd','cr','hr','cu','cy','cz','dk','dj','dm','do','ec']) + flagImgs(['bg','bf','bi','cv','kh','cm','ca','cf','td','cl','cn','co','km','cg','cd','cr','hr','cu','cy','cz','dk','dj','dm','do','ec']) + '</div>' +
+          '<div class="flag-track flag-track-3">' + flagImgs(['eg','sv','gq','er','ee','sz','et','fj','fi','fr','ga','gm','ge','de','gh','gr','gd','gt','gn','gw','gy','ht','hn','hu','is']) + flagImgs(['eg','sv','gq','er','ee','sz','et','fj','fi','fr','ga','gm','ge','de','gh','gr','gd','gt','gn','gw','gy','ht','hn','hu','is']) + '</div>' +
+          '<div class="flag-track flag-track-4">' + flagImgs(['in','id','ir','iq','ie','il','it','jm','jp','jo','kz','ke','ki','kp','kr','xk','kw','kg','la','lv','lb','ls','lr','ly','li']) + flagImgs(['in','id','ir','iq','ie','il','it','jm','jp','jo','kz','ke','ki','kp','kr','xk','kw','kg','la','lv','lb','ls','lr','ly','li']) + '</div>' +
+          '<div class="flag-track flag-track-5">' + flagImgs(['lt','lu','mg','mw','my','mv','ml','mt','mh','mr','mu','mx','fm','md','mc','mn','me','ma','mz','mm','na','nr','np','nl','nz']) + flagImgs(['lt','lu','mg','mw','my','mv','ml','mt','mh','mr','mu','mx','fm','md','mc','mn','me','ma','mz','mm','na','nr','np','nl','nz']) + '</div>' +
+          '<div class="flag-track flag-track-6">' + flagImgs(['ni','ne','ng','mk','no','om','pk','pw','ps','pa','pg','py','pe','ph','pl','pt','qa','ro','ru','rw','kn','lc','vc','ws','sm']) + flagImgs(['ni','ne','ng','mk','no','om','pk','pw','ps','pa','pg','py','pe','ph','pl','pt','qa','ro','ru','rw','kn','lc','vc','ws','sm']) + '</div>' +
+          '<div class="flag-track flag-track-7">' + flagImgs(['st','sa','sn','rs','sl','sg','sk','si','sb','so','za','ss','es','lk','sd','sr','se','ch','sy','tw','tj','tz','th','tl','tg']) + flagImgs(['st','sa','sn','rs','sl','sg','sk','si','sb','so','za','ss','es','lk','sd','sr','se','ch','sy','tw','tj','tz','th','tl','tg']) + '</div>' +
+          '<div class="flag-track flag-track-8">' + flagImgs(['to','tt','tn','tr','tm','tv','ug','ua','ae','gb','us','uy','uz','vu','ve','vn','ye','zm','zw','eu','hk','mo','pr','gu','is']) + flagImgs(['to','tt','tn','tr','tm','tv','ug','ua','ae','gb','us','uy','uz','vu','ve','vn','ye','zm','zw','eu','hk','mo','pr','gu','is']) + '</div>' +
         '</div>' +
       '</div>' +
     '</section>' +
@@ -1505,6 +1496,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   BlockchainService.updateWalletUI();
   routerHandler();
+  // Dismiss splash screen
+  window.dispatchEvent(new CustomEvent('dawatraceReady'));
 
   // Auto-connect if wallet already authorized
   if (window.ethereum) {

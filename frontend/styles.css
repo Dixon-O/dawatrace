@@ -1510,27 +1510,24 @@ tr:hover td {
 .flag-track-7 { animation: flag-scroll-ltr 31s linear infinite; }
 .flag-track-8 { animation: flag-scroll-rtl 29s linear infinite; }
 
-.flag-track span {
-    font-size: 26px;
-    line-height: 1;
-    padding: 4px 5px;
-    border-radius: 6px;
-    transition: transform 0.15s ease;
+.flag-track img {
+    height: 26px;
+    width: auto;
+    border-radius: 3px;
     display: inline-block;
+    vertical-align: middle;
+    margin: 0 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     cursor: default;
-    user-select: none;
+    flex-shrink: 0;
 }
 
-.flag-track span:hover {
-    transform: scale(1.35);
-    background: var(--c-surface);
+.flag-track img:hover {
+    transform: scale(1.45);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     z-index: 1;
     position: relative;
-}
-
-/* Pause animation on hover for the whole collage */
-.flag-collage:hover .flag-track {
-    animation-play-state: paused;
 }
 
 /* Mobile: show only 4 tracks to keep it clean */
@@ -1540,7 +1537,7 @@ tr:hover td {
     .flag-track-7,
     .flag-track-8 { display: none; }
     .flag-collage { padding: 8px 0; gap: 4px; border-radius: var(--r-md); }
-    .flag-track span { font-size: 22px; padding: 3px 4px; }
+    .flag-track img { height: 20px; margin: 0 2px; }
 }
 
 /* ============================================================
