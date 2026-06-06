@@ -1465,8 +1465,88 @@ tr:hover td {
 }
 
 /* ============================================================
+   FLAG COLLAGE — Scrolling 200+ nation flags
+   ============================================================ */
+
+@keyframes flag-scroll-ltr {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+@keyframes flag-scroll-rtl {
+    0%   { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+}
+
+.flag-collage {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-lg);
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    padding: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* soft fade on left & right edges */
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.flag-track {
+    display: flex;
+    flex-direction: row;
+    width: max-content;
+    gap: 2px;
+    will-change: transform;
+}
+
+/* Alternate odd tracks LTR, even tracks RTL for visual richness */
+.flag-track-1 { animation: flag-scroll-ltr 28s linear infinite; }
+.flag-track-2 { animation: flag-scroll-rtl 32s linear infinite; }
+.flag-track-3 { animation: flag-scroll-ltr 26s linear infinite; }
+.flag-track-4 { animation: flag-scroll-rtl 30s linear infinite; }
+.flag-track-5 { animation: flag-scroll-ltr 34s linear infinite; }
+.flag-track-6 { animation: flag-scroll-rtl 27s linear infinite; }
+.flag-track-7 { animation: flag-scroll-ltr 31s linear infinite; }
+.flag-track-8 { animation: flag-scroll-rtl 29s linear infinite; }
+
+.flag-track span {
+    font-size: 26px;
+    line-height: 1;
+    padding: 4px 5px;
+    border-radius: 6px;
+    transition: transform 0.15s ease;
+    display: inline-block;
+    cursor: default;
+    user-select: none;
+}
+
+.flag-track span:hover {
+    transform: scale(1.35);
+    background: var(--c-surface);
+    z-index: 1;
+    position: relative;
+}
+
+/* Pause animation on hover for the whole collage */
+.flag-collage:hover .flag-track {
+    animation-play-state: paused;
+}
+
+/* Mobile: show only 4 tracks to keep it clean */
+@media (max-width: 768px) {
+    .flag-track-5,
+    .flag-track-6,
+    .flag-track-7,
+    .flag-track-8 { display: none; }
+    .flag-collage { padding: 8px 0; gap: 4px; border-radius: var(--r-md); }
+    .flag-track span { font-size: 22px; padding: 3px 4px; }
+}
+
+/* ============================================================
    DawaTrace V2 — New Components
    ============================================================ */
+
 
 /* --- Verify Tabs --- */
 .verify-tabs {

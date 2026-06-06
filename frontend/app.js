@@ -479,25 +479,50 @@ var Renderers = {
     '</section>' +
 
     '<section class="container mt-xl mb-xl">' +
-      '<div class="grid-2" style="gap:24px;align-items:center">' +
+      '<div class="grid-2" style="gap:40px;align-items:center">' +
         '<div>' +
           '<span class="pill pill-purple mb-md" style="display:inline-block">Global Coverage</span>' +
           '<h2 style="margin-bottom:12px">200+ Countries.<br>40+ Regulatory Bodies.</h2>' +
           '<p class="text-secondary" style="line-height:1.7;margin-bottom:16px">Scan a barcode from Kenya, Nigeria, India, UAE, Brazil, the EU, or anywhere else — DawaTrace instantly identifies the country of origin, regulatory authority, and cross-references against global pharmaceutical intelligence.</p>' +
           '<button class="btn btn-primary" onclick="navigate(\'/verify\')">Try It Now →</button>' +
         '</div>' +
-        '<div class="grid-2" style="gap:12px">' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇰🇪</div><div class="text-sm font-bold">Kenya PPB</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇳🇬</div><div class="text-sm font-bold">Nigeria NAFDAC</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇮🇳</div><div class="text-sm font-bold">India CDSCO</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇺🇸</div><div class="text-sm font-bold">US FDA</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇦🇪</div><div class="text-sm font-bold">UAE MOH</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇧🇷</div><div class="text-sm font-bold">Brazil ANVISA</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇪🇺</div><div class="text-sm font-bold">EU EMA</div></div>' +
-          '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px">🇿🇦</div><div class="text-sm font-bold">SA SAHPRA</div></div>' +
+        '<div class="flag-collage" id="flag-collage">' +
+          '<div class="flag-track flag-track-1">' +
+            '<span>🇦🇫</span><span>🇦🇱</span><span>🇩🇿</span><span>🇦🇩</span><span>🇦🇴</span><span>🇦🇬</span><span>🇦🇷</span><span>🇦🇲</span><span>🇦🇺</span><span>🇦🇹</span><span>🇦🇿</span><span>🇧🇸</span><span>🇧🇭</span><span>🇧🇩</span><span>🇧🇧</span><span>🇧🇾</span><span>🇧🇪</span><span>🇧🇿</span><span>🇧🇯</span><span>🇧🇹</span><span>🇧🇴</span><span>🇧🇦</span><span>🇧🇼</span><span>🇧🇷</span><span>🇧🇳</span>' +
+            '<span>🇦🇫</span><span>🇦🇱</span><span>🇩🇿</span><span>🇦🇩</span><span>🇦🇴</span><span>🇦🇬</span><span>🇦🇷</span><span>🇦🇲</span><span>🇦🇺</span><span>🇦🇹</span><span>🇦🇿</span><span>🇧🇸</span><span>🇧🇭</span><span>🇧🇩</span><span>🇧🇧</span><span>🇧🇾</span><span>🇧🇪</span><span>🇧🇿</span><span>🇧🇯</span><span>🇧🇹</span><span>🇧🇴</span><span>🇧🇦</span><span>🇧🇼</span><span>🇧🇷</span><span>🇧🇳</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-2">' +
+            '<span>🇧🇬</span><span>🇧🇫</span><span>🇧🇮</span><span>🇨🇻</span><span>🇰🇭</span><span>🇨🇲</span><span>🇨🇦</span><span>🇨🇫</span><span>🇹🇩</span><span>🇨🇱</span><span>🇨🇳</span><span>🇨🇴</span><span>🇰🇲</span><span>🇨🇬</span><span>🇨🇩</span><span>🇨🇷</span><span>🇭🇷</span><span>🇨🇺</span><span>🇨🇾</span><span>🇨🇿</span><span>🇩🇰</span><span>🇩🇯</span><span>🇩🇲</span><span>🇩🇴</span><span>🇪🇨</span>' +
+            '<span>🇧🇬</span><span>🇧🇫</span><span>🇧🇮</span><span>🇨🇻</span><span>🇰🇭</span><span>🇨🇲</span><span>🇨🇦</span><span>🇨🇫</span><span>🇹🇩</span><span>🇨🇱</span><span>🇨🇳</span><span>🇨🇴</span><span>🇰🇲</span><span>🇨🇬</span><span>🇨🇩</span><span>🇨🇷</span><span>🇭🇷</span><span>🇨🇺</span><span>🇨🇾</span><span>🇨🇿</span><span>🇩🇰</span><span>🇩🇯</span><span>🇩🇲</span><span>🇩🇴</span><span>🇪🇨</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-3">' +
+            '<span>🇪🇬</span><span>🇸🇻</span><span>🇬🇶</span><span>🇪🇷</span><span>🇪🇪</span><span>🇸🇿</span><span>🇪🇹</span><span>🇫🇯</span><span>🇫🇮</span><span>🇫🇷</span><span>🇬🇦</span><span>🇬🇲</span><span>🇬🇪</span><span>🇩🇪</span><span>🇬🇭</span><span>🇬🇷</span><span>🇬🇩</span><span>🇬🇹</span><span>🇬🇳</span><span>🇬🇼</span><span>🇬🇾</span><span>🇭🇹</span><span>🇭🇳</span><span>🇭🇺</span><span>🇮🇸</span>' +
+            '<span>🇪🇬</span><span>🇸🇻</span><span>🇬🇶</span><span>🇪🇷</span><span>🇪🇪</span><span>🇸🇿</span><span>🇪🇹</span><span>🇫🇯</span><span>🇫🇮</span><span>🇫🇷</span><span>🇬🇦</span><span>🇬🇲</span><span>🇬🇪</span><span>🇩🇪</span><span>🇬🇭</span><span>🇬🇷</span><span>🇬🇩</span><span>🇬🇹</span><span>🇬🇳</span><span>🇬🇼</span><span>🇬🇾</span><span>🇭🇹</span><span>🇭🇳</span><span>🇭🇺</span><span>🇮🇸</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-4">' +
+            '<span>🇮🇳</span><span>🇮🇩</span><span>🇮🇷</span><span>🇮🇶</span><span>🇮🇪</span><span>🇮🇱</span><span>🇮🇹</span><span>🇯🇲</span><span>🇯🇵</span><span>🇯🇴</span><span>🇰🇿</span><span>🇰🇪</span><span>🇰🇮</span><span>🇰🇵</span><span>🇰🇷</span><span>🇽🇰</span><span>🇰🇼</span><span>🇰🇬</span><span>🇱🇦</span><span>🇱🇻</span><span>🇱🇧</span><span>🇱🇸</span><span>🇱🇷</span><span>🇱🇾</span><span>🇱🇮</span>' +
+            '<span>🇮🇳</span><span>🇮🇩</span><span>🇮🇷</span><span>🇮🇶</span><span>🇮🇪</span><span>🇮🇱</span><span>🇮🇹</span><span>🇯🇲</span><span>🇯🇵</span><span>🇯🇴</span><span>🇰🇿</span><span>🇰🇪</span><span>🇰🇮</span><span>🇰🇵</span><span>🇰🇷</span><span>🇽🇰</span><span>🇰🇼</span><span>🇰🇬</span><span>🇱🇦</span><span>🇱🇻</span><span>🇱🇧</span><span>🇱🇸</span><span>🇱🇷</span><span>🇱🇾</span><span>🇱🇮</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-5">' +
+            '<span>🇱🇹</span><span>🇱🇺</span><span>🇲🇬</span><span>🇲🇼</span><span>🇲🇾</span><span>🇲🇻</span><span>🇲🇱</span><span>🇲🇹</span><span>🇲🇭</span><span>🇲🇷</span><span>🇲🇺</span><span>🇲🇽</span><span>🇫🇲</span><span>🇲🇩</span><span>🇲🇨</span><span>🇲🇳</span><span>🇲🇪</span><span>🇲🇦</span><span>🇲🇿</span><span>🇲🇲</span><span>🇳🇦</span><span>🇳🇷</span><span>🇳🇵</span><span>🇳🇱</span><span>🇳🇿</span>' +
+            '<span>🇱🇹</span><span>🇱🇺</span><span>🇲🇬</span><span>🇲🇼</span><span>🇲🇾</span><span>🇲🇻</span><span>🇲🇱</span><span>🇲🇹</span><span>🇲🇭</span><span>🇲🇷</span><span>🇲🇺</span><span>🇲🇽</span><span>🇫🇲</span><span>🇲🇩</span><span>🇲🇨</span><span>🇲🇳</span><span>🇲🇪</span><span>🇲🇦</span><span>🇲🇿</span><span>🇲🇲</span><span>🇳🇦</span><span>🇳🇷</span><span>🇳🇵</span><span>🇳🇱</span><span>🇳🇿</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-6">' +
+            '<span>🇳🇮</span><span>🇳🇪</span><span>🇳🇬</span><span>🇲🇰</span><span>🇳🇴</span><span>🇴🇲</span><span>🇵🇰</span><span>🇵🇼</span><span>🇵🇸</span><span>🇵🇦</span><span>🇵🇬</span><span>🇵🇾</span><span>🇵🇪</span><span>🇵🇭</span><span>🇵🇱</span><span>🇵🇹</span><span>🇶🇦</span><span>🇷🇴</span><span>🇷🇺</span><span>🇷🇼</span><span>🇰🇳</span><span>🇱🇨</span><span>🇻🇨</span><span>🇼🇸</span><span>🇸🇲</span>' +
+            '<span>🇳🇮</span><span>🇳🇪</span><span>🇳🇬</span><span>🇲🇰</span><span>🇳🇴</span><span>🇴🇲</span><span>🇵🇰</span><span>🇵🇼</span><span>🇵🇸</span><span>🇵🇦</span><span>🇵🇬</span><span>🇵🇾</span><span>🇵🇪</span><span>🇵🇭</span><span>🇵🇱</span><span>🇵🇹</span><span>🇶🇦</span><span>🇷🇴</span><span>🇷🇺</span><span>🇷🇼</span><span>🇰🇳</span><span>🇱🇨</span><span>🇻🇨</span><span>🇼🇸</span><span>🇸🇲</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-7">' +
+            '<span>🇸🇹</span><span>🇸🇦</span><span>🇸🇳</span><span>🇷🇸</span><span>🇸🇱</span><span>🇸🇬</span><span>🇸🇰</span><span>🇸🇮</span><span>🇸🇧</span><span>🇸🇴</span><span>🇿🇦</span><span>🇸🇸</span><span>🇪🇸</span><span>🇱🇰</span><span>🇸🇩</span><span>🇸🇷</span><span>🇸🇪</span><span>🇨🇭</span><span>🇸🇾</span><span>🇹🇼</span><span>🇹🇯</span><span>🇹🇿</span><span>🇹🇭</span><span>🇹🇱</span><span>🇹🇬</span>' +
+            '<span>🇸🇹</span><span>🇸🇦</span><span>🇸🇳</span><span>🇷🇸</span><span>🇸🇱</span><span>🇸🇬</span><span>🇸🇰</span><span>🇸🇮</span><span>🇸🇧</span><span>🇸🇴</span><span>🇿🇦</span><span>🇸🇸</span><span>🇪🇸</span><span>🇱🇰</span><span>🇸🇩</span><span>🇸🇷</span><span>🇸🇪</span><span>🇨🇭</span><span>🇸🇾</span><span>🇹🇼</span><span>🇹🇯</span><span>🇹🇿</span><span>🇹🇭</span><span>🇹🇱</span><span>🇹🇬</span>' +
+          '</div>' +
+          '<div class="flag-track flag-track-8">' +
+            '<span>🇹🇴</span><span>🇹🇹</span><span>🇹🇳</span><span>🇹🇷</span><span>🇹🇲</span><span>🇹🇻</span><span>🇺🇬</span><span>🇺🇦</span><span>🇦🇪</span><span>🇬🇧</span><span>🇺🇸</span><span>🇺🇾</span><span>🇺🇿</span><span>🇻🇺</span><span>🇻🇪</span><span>🇻🇳</span><span>🇾🇪</span><span>🇿🇲</span><span>🇿🇼</span><span>🇪🇺</span><span>🇭🇰</span><span>🇲🇴</span><span>🇵🇷</span><span>🇬🇺</span><span>🇮🇸</span>' +
+            '<span>🇹🇴</span><span>🇹🇹</span><span>🇹🇳</span><span>🇹🇷</span><span>🇹🇲</span><span>🇹🇻</span><span>🇺🇬</span><span>🇺🇦</span><span>🇦🇪</span><span>🇬🇧</span><span>🇺🇸</span><span>🇺🇾</span><span>🇺🇿</span><span>🇻🇺</span><span>🇻🇪</span><span>🇻🇳</span><span>🇾🇪</span><span>🇿🇲</span><span>🇿🇼</span><span>🇪🇺</span><span>🇭🇰</span><span>🇲🇴</span><span>🇵🇷</span><span>🇬🇺</span><span>🇮🇸</span>' +
+          '</div>' +
         '</div>' +
       '</div>' +
     '</section>' +
+
 
     '<section style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);color:white;padding:48px 0;text-align:center">' +
       '<div class="container">' +
