@@ -1454,9 +1454,20 @@ function routerHandler() {
   var path = window.location.hash.slice(1) || '/';
   var cleanPath = path.split('?')[0];
 
+  // Sync top nav
   document.querySelectorAll('#topbar-nav a').forEach(function(a) {
     a.classList.toggle('active', a.dataset.route === cleanPath);
   });
+
+  // Sync bottom nav
+  var bnMap = { '/': 'bn-home', '/verify': 'bn-verify', '/track': 'bn-track', '/dashboard': 'bn-dashboard' };
+  document.querySelectorAll('.bottom-nav-item').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  if (bnMap[cleanPath]) {
+    var el = document.getElementById(bnMap[cleanPath]);
+    if (el) el.classList.add('active');
+  }
 
   switch (cleanPath) {
     case '/': UI.render(Renderers.landing); break;
@@ -1468,7 +1479,26 @@ function routerHandler() {
     case '/admin': UI.render(Renderers.admin); break;
     default: UI.render(Renderers.landing);
   }
+
+  // Init table swipe hints after render
+  setTimeout(initTableSwipeHints, 100);
 }
+
+// Add swipe-hint "← Swipe to see more →" and can-scroll class to overflowing tables
+function initTableSwipeHints() {
+  document.querySelectorAll('.table-wrap').forEach(function(wrap) {
+    if (wrap.scrollWidth > wrap.clientWidth) {
+      wrap.classList.add('can-scroll');
+      if (!wrap.previousElementSibling || !wrap.previousElementSibling.classList.contains('table-swipe-hint')) {
+        var hint = document.createElement('p');
+        hint.className = 'table-swipe-hint';
+        hint.textContent = '← swipe to see more →';
+        wrap.parentNode.insertBefore(hint, wrap);
+      }
+    }
+  });
+}
+
 
 window.addEventListener('hashchange', routerHandler);
 

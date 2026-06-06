@@ -162,6 +162,14 @@
   <!-- Main Content Area -->
   <main id="app" class="page-content"></main>
 
+  <!-- Bottom Navigation (mobile only) -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-item" id="bn-home"     onclick="navigate('/')">      <span class="bn-icon">🏠</span><span>Home</span></button>
+    <button class="bottom-nav-item" id="bn-verify"   onclick="navigate('/verify')"> <span class="bn-icon">🔍</span><span>Verify</span></button>
+    <button class="bottom-nav-item" id="bn-track"    onclick="navigate('/track')">  <span class="bn-icon">📦</span><span>Track</span></button>
+    <button class="bottom-nav-item" id="bn-dashboard"onclick="navigate('/dashboard')"><span class="bn-icon">📊</span><span>Dashboard</span></button>
+  </nav>
+
   <!-- Footer -->
   <footer class="footer">
     <span>© 2026 DawaTrace · Pharmaceutical Verification Platform</span>
