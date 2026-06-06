@@ -155,54 +155,262 @@ var RiskEngine = {
     return { trust: trust, status: status, signals: signals };
   },
 
-  scoreUntracked: function(fdaData) {
-    // Product found in FDA/external registry but NOT in our blockchain
-    return {
-      trust: 45,
-      status: 'UNTRACKED',
-      signals: [
-        '🔍 Product found in FDA registry — confirmed real product',
-        '⚠️ NOT tracked in DawaTrace blockchain — no provenance data',
-        '🔗 No supply chain events available',
-        'ℹ️ This product exists but has not been registered in our verification system'
-      ]
-    };
+  scoreUntracked: function(lookupResult) {
+    // Product found in an external registry but NOT in our blockchain
+    var signals = [];
+    var trust = 40;
+    var src = lookupResult.source || 'Unknown';
+    var country = lookupResult.country || '';
+    var flag = lookupResult.flag || '🌐';
+
+    if (lookupResult.apiVerified) {
+      trust = 50;
+      signals.push(flag + ' Product verified via ' + src + ' — confirmed real product');
+    } else if (lookupResult.whoMatch) {
+      trust = 42;
+      signals.push('🏥 Matches WHO Essential Medicine: ' + lookupResult.whoMatch.n + ' (' + lookupResult.whoMatch.c + ')');
+    } else if (country) {
+      trust = 35;
+      signals.push(flag + ' Barcode registered in ' + country);
+    }
+
+    if (lookupResult.manufacturer) signals.push('🏭 Manufacturer: ' + lookupResult.manufacturer);
+    if (lookupResult.regulatoryBody) signals.push('📋 Regulatory body: ' + lookupResult.regulatoryBody);
+    signals.push('⚠️ NOT tracked in DawaTrace blockchain — no provenance data');
+    signals.push('🔗 No on-chain supply chain events available');
+    signals.push('ℹ️ This product exists but has not been registered in our verification system');
+
+    return { trust: trust, status: 'UNTRACKED', signals: signals };
   }
 };
 
 // ============================================================
-//                   OPENFDA HOT LOOKUP
+//        GLOBAL PHARMACEUTICAL LOOKUP (Multi-Source)
 // ============================================================
 
-var OpenFDA = {
+var GlobalLookup = {
+
+  // Master cascade: OpenFDA → RxNorm → WHO → GS1 prefix
   lookup: async function(query) {
-    try {
-      var url;
-      if (/^\d{10,14}$/.test(query)) {
-        // Looks like a GTIN/NDC
-        var ndc = query.length === 14 ? query.substring(3,7) + '-' + query.substring(7,11) : query;
-        url = 'https://api.fda.gov/drug/ndc.json?search=product_ndc:"' + ndc + '"&limit=1';
-      } else {
-        url = 'https://api.fda.gov/drug/ndc.json?search=brand_name:"' + encodeURIComponent(query) + '"&limit=1';
+    var result = { found: false, source: null, country: null, flag: '🌐', apiVerified: false };
+    var isNumeric = /^\d{8,14}$/.test(query);
+
+    // Step 0: GS1 country decode (always, if numeric)
+    if (isNumeric && typeof GlobalReference !== 'undefined') {
+      var geo = GlobalReference.decodeCountry(query);
+      if (geo) {
+        result.country = geo.country;
+        result.flag = geo.flag;
+        result.gs1Prefix = geo.prefix;
+        result.regulatoryBody = this.getRegulator(geo.country);
       }
-      var res = await fetch(url);
-      if (!res.ok) return null;
-      var data = await res.json();
-      if (!data.results || data.results.length === 0) return null;
-      var r = data.results[0];
-      return {
-        productName: (r.brand_name || r.generic_name || 'Unknown') + ' ' + (r.dosage_form || ''),
-        genericName: r.generic_name || '',
-        manufacturer: r.labeler_name || 'Unknown',
-        ndc: r.product_ndc || '',
-        dosageForm: r.dosage_form || '',
-        route: (r.route || [''])[0],
-        source: 'OpenFDA'
-      };
-    } catch(e) {
-      console.log('OpenFDA lookup failed:', e);
-      return null;
     }
+
+    // Step 1: OpenFDA (US products — best API)
+    try {
+      var fdaResult = await this.queryOpenFDA(query);
+      if (fdaResult) {
+        result.found = true;
+        result.apiVerified = true;
+        result.source = 'OpenFDA (US FDA)';
+        result.productName = fdaResult.productName;
+        result.genericName = fdaResult.genericName;
+        result.manufacturer = fdaResult.manufacturer;
+        result.ndc = fdaResult.ndc;
+        result.dosageForm = fdaResult.dosageForm;
+        result.route = fdaResult.route;
+        if (!result.country) { result.country = 'United States'; result.flag = '🇺🇸'; }
+        return result;
+      }
+    } catch(e) { console.log('OpenFDA cascade skip:', e.message); }
+
+    // Step 2: RxNorm (NIH — drug name normalization, global)
+    if (!isNumeric) {
+      try {
+        var rxResult = await this.queryRxNorm(query);
+        if (rxResult) {
+          result.found = true;
+          result.apiVerified = true;
+          result.source = 'RxNorm (NIH)';
+          result.productName = rxResult.name;
+          result.genericName = rxResult.name;
+          result.rxcui = rxResult.rxcui;
+          // Try to get more details via RxNorm properties
+          try {
+            var props = await this.queryRxNormProperties(rxResult.rxcui);
+            if (props) {
+              if (props.dosageForm) result.dosageForm = props.dosageForm;
+            }
+          } catch(pe) {}
+          return result;
+        }
+      } catch(e) { console.log('RxNorm cascade skip:', e.message); }
+    }
+
+    // Step 3: WHO Essential Medicines (embedded, instant)
+    if (typeof GlobalReference !== 'undefined') {
+      var whoMatch = GlobalReference.matchWHO(query);
+      if (whoMatch) {
+        result.found = true;
+        result.source = 'WHO Essential Medicines List';
+        result.whoMatch = whoMatch;
+        result.productName = whoMatch.n;
+        result.genericName = whoMatch.g;
+        result.dosageForm = whoMatch.c;
+        // Infer manufacturer from country
+        if (result.country) {
+          var mfgs = GlobalReference.getManufacturers(result.country);
+          if (mfgs && mfgs.length > 0) result.manufacturer = mfgs[0] + ' (typical for ' + result.country + ')';
+        }
+        return result;
+      }
+    }
+
+    // Step 4: If we at least decoded the country from GS1
+    if (result.country && isNumeric) {
+      result.found = true;
+      result.source = 'GS1 Barcode Registry';
+      result.productName = 'Pharmaceutical Product (barcode origin: ' + result.country + ')';
+      var mfgs2 = typeof GlobalReference !== 'undefined' ? GlobalReference.getManufacturers(result.country) : null;
+      if (mfgs2) result.manufacturer = 'Likely: ' + mfgs2.slice(0,3).join(', ');
+      return result;
+    }
+
+    // Step 5: Try OpenFDA label search as last resort (broader search)
+    if (!isNumeric) {
+      try {
+        var labelResult = await this.queryOpenFDALabel(query);
+        if (labelResult) {
+          result.found = true;
+          result.apiVerified = true;
+          result.source = 'OpenFDA Drug Labels';
+          result.productName = labelResult.productName;
+          result.genericName = labelResult.genericName;
+          result.manufacturer = labelResult.manufacturer;
+          return result;
+        }
+      } catch(e) { console.log('OpenFDA label cascade skip:', e.message); }
+    }
+
+    return result;
+  },
+
+  queryOpenFDA: async function(query) {
+    var url;
+    if (/^\d{10,14}$/.test(query)) {
+      var ndc = query.length === 14 ? query.substring(3,7) + '-' + query.substring(7,11) : query;
+      url = 'https://api.fda.gov/drug/ndc.json?search=product_ndc:"' + ndc + '"&limit=1';
+    } else {
+      url = 'https://api.fda.gov/drug/ndc.json?search=brand_name:"' + encodeURIComponent(query) + '"&limit=1';
+    }
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data.results || data.results.length === 0) return null;
+    var r = data.results[0];
+    return {
+      productName: (r.brand_name || r.generic_name || 'Unknown') + ' ' + (r.dosage_form || ''),
+      genericName: r.generic_name || '',
+      manufacturer: r.labeler_name || 'Unknown',
+      ndc: r.product_ndc || '',
+      dosageForm: r.dosage_form || '',
+      route: (r.route || [''])[0]
+    };
+  },
+
+  queryOpenFDALabel: async function(query) {
+    var url = 'https://api.fda.gov/drug/label.json?search=openfda.brand_name:"' + encodeURIComponent(query) + '"&limit=1';
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data.results || data.results.length === 0) return null;
+    var r = data.results[0];
+    var of = r.openfda || {};
+    return {
+      productName: (of.brand_name ? of.brand_name[0] : query) + ' ' + (of.dosage_form ? of.dosage_form[0] : ''),
+      genericName: of.generic_name ? of.generic_name[0] : '',
+      manufacturer: of.manufacturer_name ? of.manufacturer_name[0] : 'Unknown'
+    };
+  },
+
+  queryRxNorm: async function(query) {
+    var url = 'https://rxnav.nlm.nih.gov/REST/rxcui.json?name=' + encodeURIComponent(query) + '&search=2';
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data.idGroup || !data.idGroup.rxnormId || data.idGroup.rxnormId.length === 0) {
+      // Try approximate match
+      var url2 = 'https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=' + encodeURIComponent(query) + '&maxEntries=1';
+      var res2 = await fetch(url2);
+      if (!res2.ok) return null;
+      var data2 = await res2.json();
+      if (!data2.approximateGroup || !data2.approximateGroup.candidate || data2.approximateGroup.candidate.length === 0) return null;
+      var c = data2.approximateGroup.candidate[0];
+      return { rxcui: c.rxcui, name: c.rxaui ? query : query, score: c.score };
+    }
+    return { rxcui: data.idGroup.rxnormId[0], name: data.idGroup.name || query };
+  },
+
+  queryRxNormProperties: async function(rxcui) {
+    var url = 'https://rxnav.nlm.nih.gov/REST/rxcui/' + rxcui + '/properties.json';
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data.properties) return null;
+    return { name: data.properties.name, dosageForm: data.properties.tty || '' };
+  },
+
+  getRegulator: function(country) {
+    var map = {
+      'US/Canada': 'FDA (US Food & Drug Administration)',
+      'US (Drugs)': 'FDA (US Food & Drug Administration)',
+      'US (Drugs/Healthcare)': 'FDA (US Food & Drug Administration)',
+      'United States': 'FDA (US Food & Drug Administration)',
+      'UK': 'MHRA (Medicines & Healthcare products Regulatory Agency)',
+      'France': 'ANSM (Agence nationale de sécurité du médicament)',
+      'Germany': 'BfArM (Federal Institute for Drugs and Medical Devices)',
+      'Italy': 'AIFA (Agenzia Italiana del Farmaco)',
+      'Spain': 'AEMPS (Agencia Española de Medicamentos)',
+      'Japan': 'PMDA (Pharmaceuticals and Medical Devices Agency)',
+      'China': 'NMPA (National Medical Products Administration)',
+      'India': 'CDSCO (Central Drugs Standard Control Organisation)',
+      'Brazil': 'ANVISA (Agência Nacional de Vigilância Sanitária)',
+      'Mexico': 'COFEPRIS (Comisión Federal para la Protección contra Riesgos Sanitarios)',
+      'South Africa': 'SAHPRA (South African Health Products Regulatory Authority)',
+      'Kenya': 'PPB (Pharmacy and Poisons Board)',
+      'Nigeria': 'NAFDAC (National Agency for Food and Drug Administration and Control)',
+      'Ghana': 'FDA Ghana (Food and Drugs Authority)',
+      'Tanzania': 'TMDA (Tanzania Medicines and Medical Devices Authority)',
+      'Egypt': 'EDA (Egyptian Drug Authority)',
+      'UAE': 'MOH (Ministry of Health and Prevention)',
+      'Saudi Arabia': 'SFDA (Saudi Food & Drug Authority)',
+      'South Korea': 'MFDS (Ministry of Food and Drug Safety)',
+      'Australia': 'TGA (Therapeutic Goods Administration)',
+      'Russia': 'Roszdravnadzor (Federal Service for Surveillance in Healthcare)',
+      'Indonesia': 'BPOM (Badan Pengawas Obat dan Makanan)',
+      'Thailand': 'Thai FDA (Food and Drug Administration Thailand)',
+      'Pakistan': 'DRAP (Drug Regulatory Authority of Pakistan)',
+      'Bangladesh': 'DGDA (Directorate General of Drug Administration)',
+      'Vietnam': 'DAV (Drug Administration of Vietnam)',
+      'Philippines': 'FDA Philippines',
+      'Colombia': 'INVIMA (Instituto Nacional de Vigilancia de Medicamentos)',
+      'Argentina': 'ANMAT (Administración Nacional de Medicamentos)',
+      'Turkey': 'TITCK (Turkish Medicines and Medical Devices Agency)',
+      'Poland': 'URPL (Office for Registration of Medicinal Products)',
+      'Switzerland': 'Swissmedic',
+      'Netherlands': 'MEB (Medicines Evaluation Board)',
+      'Israel': 'MOH Israel (Ministry of Health Pharmaceutical Division)',
+      'Iran': 'IFDA (Iran Food and Drug Administration)',
+      'Malaysia': 'NPRA (National Pharmaceutical Regulatory Agency)',
+      'Singapore': 'HSA (Health Sciences Authority)',
+      'Cambodia': 'DDF (Department of Drugs and Food)',
+      'Sri Lanka': 'NMRA (National Medicines Regulatory Authority)',
+    };
+    for (var key in map) { if (country && country.indexOf(key) > -1) return map[key]; }
+    // For EU countries, return EMA
+    var eu = ['France','Germany','Italy','Spain','Netherlands','Belgium','Austria','Sweden','Denmark','Finland','Ireland','Portugal','Greece','Poland','Romania','Czech Republic','Hungary','Bulgaria','Croatia','Slovenia','Slovakia','Estonia','Latvia','Lithuania','Malta','Cyprus','Luxembourg'];
+    for (var i = 0; i < eu.length; i++) { if (country && country.indexOf(eu[i]) > -1) return 'EMA (European Medicines Agency) + National Authority'; }
+    return null;
   }
 };
 
@@ -349,12 +557,18 @@ var Renderers = {
       detailsHtml = '<div class="result-details grid-2 mt-lg">' +
         '<div class="detail-item"><span class="detail-label">Product</span><span class="detail-value">' + (data.productName || '—') + '</span></div>' +
         '<div class="detail-item"><span class="detail-label">Manufacturer</span><span class="detail-value">' + (data.manufacturer || '—') + '</span></div>' +
+        (data.genericName ? '<div class="detail-item"><span class="detail-label">Generic Name</span><span class="detail-value">' + data.genericName + '</span></div>' : '') +
         '<div class="detail-item"><span class="detail-label">GTIN</span><span class="detail-value text-mono">' + (data.gtin || '—') + '</span></div>' +
         '<div class="detail-item"><span class="detail-label">Serial</span><span class="detail-value text-mono">' + (data.serialNumber || '—') + '</span></div>' +
         '<div class="detail-item"><span class="detail-label">Lot</span><span class="detail-value text-mono">' + (data.lotNumber || '—') + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Manufactured</span><span class="detail-value">' + Utils.formatDate(data.manufactureDate) + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Expires</span><span class="detail-value">' + Utils.formatDate(data.expiryDate) + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Custody Events</span><span class="detail-value">' + (data.custodyCount || data.supplyChain?.length || 0) + '</span></div>' +
+        (data.manufactureDate ? '<div class="detail-item"><span class="detail-label">Manufactured</span><span class="detail-value">' + Utils.formatDate(data.manufactureDate) + '</span></div>' : '') +
+        (data.expiryDate ? '<div class="detail-item"><span class="detail-label">Expires</span><span class="detail-value">' + Utils.formatDate(data.expiryDate) + '</span></div>' : '') +
+        '<div class="detail-item"><span class="detail-label">Custody Events</span><span class="detail-value">' + (data.custodyCount || (data.supplyChain ? data.supplyChain.length : 0)) + '</span></div>' +
+        (data.country ? '<div class="detail-item"><span class="detail-label">Origin Country</span><span class="detail-value">' + (data.flag || '🌐') + ' ' + data.country + '</span></div>' : '') +
+        (data.regulatoryBody ? '<div class="detail-item"><span class="detail-label">Regulatory Body</span><span class="detail-value">' + data.regulatoryBody + '</span></div>' : '') +
+        (data.source ? '<div class="detail-item"><span class="detail-label">Data Source</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">' + data.source + '</span></span></div>' : '') +
+        (data.ndc ? '<div class="detail-item"><span class="detail-label">NDC</span><span class="detail-value text-mono">' + data.ndc + '</span></div>' : '') +
+        (data.dosageForm ? '<div class="detail-item"><span class="detail-label">Dosage Form</span><span class="detail-value">' + data.dosageForm + '</span></div>' : '') +
       '</div>';
     }
 
@@ -889,16 +1103,16 @@ var BlockchainService = {
         return;
       }
 
-      // --- HOT LOOKUP: Try OpenFDA ---
-      Utils.showToast('Not in local database — checking FDA registry...', 'info');
+      // --- GLOBAL HOT LOOKUP: Multi-source cascade ---
+      Utils.showToast('Not in local database — searching global pharmaceutical registries...', 'info');
       try {
-        var fdaResult = await OpenFDA.lookup(query);
-        if (fdaResult) {
+        var globalResult = await GlobalLookup.lookup(query);
+        if (globalResult && globalResult.found) {
           var untracked = {
             exists: true,
-            productName: fdaResult.productName,
-            manufacturer: fdaResult.manufacturer,
-            gtin: query,
+            productName: globalResult.productName || 'Unknown Product',
+            manufacturer: globalResult.manufacturer || '—',
+            gtin: /^\d{8,14}$/.test(query) ? query : '—',
             serialNumber: '—',
             lotNumber: '—',
             manufactureDate: 0,
@@ -907,13 +1121,19 @@ var BlockchainService = {
             isRecalled: false,
             isExpired: false,
             scanCount: 0,
-            source: 'OpenFDA'
+            source: globalResult.source,
+            country: globalResult.country,
+            flag: globalResult.flag,
+            genericName: globalResult.genericName,
+            dosageForm: globalResult.dosageForm,
+            regulatoryBody: globalResult.regulatoryBody,
+            ndc: globalResult.ndc
           };
-          var untrackedRisk = RiskEngine.scoreUntracked(fdaResult);
+          var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
           UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
           return;
         }
-      } catch(e) { console.log('FDA lookup error:', e); }
+      } catch(e) { console.log('Global lookup error:', e); }
 
       // Not found anywhere
       var fakeData = { exists: false };
