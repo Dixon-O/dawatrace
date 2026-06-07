@@ -467,9 +467,9 @@ var Renderers = {
   landing: function() {
     return '<section class="hero">' +
       '<div class="container">' +
-        '<div class="hero-badge"><span class="pill pill-accent">Blockchain-Verified · AI-Scored · Global Coverage</span></div>' +
+        '<div class="hero-badge"><span class="pill pill-accent">Blockchain-Verified · Risk-Scored · Global Coverage</span></div>' +
         '<h1 class="hero-title">Protecting Lives Through<br><span class="gradient-text">Verified Medicine.</span></h1>' +
-        '<p class="hero-subtitle">DawaTrace uses blockchain provenance and AI risk scoring to combat counterfeit pharmaceuticals — the silent crisis killing over 250,000 people annually. Scan any medicine, from any country, in seconds.</p>' +
+        '<p class="hero-subtitle">DawaTrace uses blockchain provenance and algorithmic risk scoring to combat counterfeit pharmaceuticals — the silent crisis killing over 250,000 people annually. Scan any medicine, from any country, in seconds.</p>' +
         '<div class="hero-actions">' +
           '<button class="btn btn-primary btn-lg" onclick="navigate(\'/verify\')">🔍 Verify Medicine Now</button>' +
           '<button class="btn btn-soft btn-lg" onclick="navigate(\'/dashboard\')">📊 View Dashboard</button>' +
