@@ -845,8 +845,55 @@ var Renderers = {
 
   admin: function() {
     if (currentRole !== 'ADMIN') {
-      return '<div class="container mt-xl"><div class="card text-center"><div class="empty-icon">🔒</div><p>Admin access required. Connect with the contract deployer wallet.</p></div></div>';
+      return '<div class="container mt-xl"><div class="card text-center"><div class="empty-icon">🔒</div><p>Admin access required. <a href="#/login" onclick="navigate(\'/login\')">Login as Administrator</a></p></div></div>';
     }
+
+    // Pending requests
+    var requests = JSON.parse(localStorage.getItem('dawatrace_requests') || '[]');
+    var pendingRows = '';
+    var pendingCount = 0;
+    requests.forEach(function(r, i) {
+      if (r.status === 'PENDING') {
+        pendingCount++;
+        var roleIcons = { MANUFACTURER: '🏭', DISTRIBUTOR: '🚚', PHARMACY: '💊', REGULATOR: '🏛️' };
+        pendingRows += '<tr>' +
+          '<td class="text-mono text-sm">' + Utils.shortAddr(r.wallet) + '</td>' +
+          '<td>' + (roleIcons[r.role] || '') + ' ' + r.role + '</td>' +
+          '<td>' + (r.orgName || '—') + '</td>' +
+          '<td class="text-sm text-secondary">' + new Date(r.timestamp).toLocaleDateString() + '</td>' +
+          '<td>' +
+            '<button class="btn btn-sm btn-primary" onclick="RBAC.approveRequest(' + i + ')">✅ Approve</button> ' +
+            '<button class="btn btn-sm btn-ghost" onclick="RBAC.rejectRequest(' + i + ')">❌ Reject</button>' +
+          '</td>' +
+        '</tr>';
+      }
+    });
+
+    // Team members (approved)
+    var team = JSON.parse(localStorage.getItem('dawatrace_team') || '[]');
+    var teamRows = '';
+    team.forEach(function(m, i) {
+      var roleIcons = { MANUFACTURER: '🏭', DISTRIBUTOR: '🚚', PHARMACY: '💊', REGULATOR: '🏛️', ADMIN: '👑' };
+      teamRows += '<tr>' +
+        '<td class="text-mono text-sm">' + Utils.shortAddr(m.wallet) + '</td>' +
+        '<td>' + (roleIcons[m.role] || '👤') + ' ' + m.role + '</td>' +
+        '<td>' + (m.orgName || currentOrgName || '—') + '</td>' +
+        '<td class="text-sm text-secondary">' + new Date(m.grantedAt).toLocaleDateString() + '</td>' +
+        '<td><button class="btn btn-sm btn-ghost" onclick="RBAC.revokeTeamMember(' + i + ')">Revoke</button></td>' +
+      '</tr>';
+    });
+
+    // Failed admin attempts
+    var attempts = JSON.parse(localStorage.getItem('dawatrace_admin_attempts') || '[]');
+    var attemptRows = '';
+    attempts.forEach(function(a) {
+      attemptRows += '<tr>' +
+        '<td class="text-mono text-sm">' + Utils.shortAddr(a.wallet) + '</td>' +
+        '<td>' + a.orgType + '</td>' +
+        '<td class="text-sm text-secondary">' + new Date(a.timestamp).toLocaleString() + '</td>' +
+      '</tr>';
+    });
+
     return '<div class="dashboard-layout">' +
       '<aside class="sidebar">' +
         '<div class="sidebar-header"><h3>Dashboard</h3><span class="pill pill-accent">ADMIN</span></div>' +
@@ -858,20 +905,77 @@ var Renderers = {
         '</nav>' +
       '</aside>' +
       '<main class="dashboard-main">' +
-        '<h2 class="mb-lg">Admin Panel</h2>' +
+        '<h2 class="mb-lg">⚙️ Admin Panel</h2>' +
+
+        // Generate Invite card
         '<div class="grid-2 mb-lg">' +
-          '<div class="card"><h3 class="mb-md">Grant Role</h3>' +
-            '<div class="form-group mb-md"><label class="form-label">Wallet Address</label><input type="text" id="admin-addr" class="form-input text-mono" placeholder="0x..."></div>' +
-            '<div class="form-group mb-md"><label class="form-label">Role</label><select id="admin-role" class="form-input"><option value="MANUFACTURER_ROLE">Manufacturer</option><option value="DISTRIBUTOR_ROLE">Distributor</option><option value="PHARMACY_ROLE">Pharmacy</option><option value="REGULATOR_ROLE">Regulator</option></select></div>' +
-            '<button class="btn btn-primary w-full" onclick="BlockchainService.grantRole()">Grant Role</button>' +
+          '<div class="card">' +
+            '<h3 class="mb-md">📨 Generate Invite</h3>' +
+            '<p class="text-sm text-secondary mb-md">Create a QR invite code for a team member to scan and request access.</p>' +
+            '<div class="form-group mb-md"><label class="form-label">Role</label>' +
+              '<select id="invite-role" class="form-input">' +
+                '<option value="MANUFACTURER">🏭 Manufacturer</option>' +
+                '<option value="DISTRIBUTOR">🚚 Distributor</option>' +
+                '<option value="PHARMACY">💊 Pharmacy</option>' +
+                '<option value="REGULATOR">🏛️ Regulator</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="form-group mb-md"><label class="form-label">Expires In</label>' +
+              '<select id="invite-expiry" class="form-input">' +
+                '<option value="3600">1 Hour</option>' +
+                '<option value="86400" selected>24 Hours</option>' +
+                '<option value="604800">7 Days</option>' +
+                '<option value="2592000">30 Days</option>' +
+              '</select>' +
+            '</div>' +
+            '<button class="btn btn-primary w-full" onclick="InviteService.generate()">Generate Invite QR</button>' +
+            '<div id="invite-qr-output" class="mt-md text-center"></div>' +
           '</div>' +
-          '<div class="card"><h3 class="mb-md">System Status</h3>' +
-            '<div class="detail-item mb-sm"><span class="detail-label">Mode</span><span class="detail-value">' + (demoMode ? 'Demo' : 'Live Blockchain') + '</span></div>' +
-            '<div class="detail-item mb-sm"><span class="detail-label">Products</span><span class="detail-value">' + DEMO_DB.products.length + '</span></div>' +
-            '<div class="detail-item mb-sm"><span class="detail-label">Connected</span><span class="detail-value">' + (isConnected ? 'Yes' : 'No') + '</span></div>' +
-            '<div class="detail-item mb-sm"><span class="detail-label">Contract</span><span class="detail-value text-mono">' + Utils.shortAddr(contractAddress || DEFAULT_CONTRACT_ADDRESS) + '</span></div>' +
+
+          // System Status card
+          '<div class="card">' +
+            '<h3 class="mb-md">📡 System Status</h3>' +
+            '<div class="result-details" style="border:none">' +
+              '<div class="detail-item"><span class="detail-label">Mode</span><span class="detail-value">' + (demoMode ? '🟡 Demo' : '🟢 Live Blockchain') + '</span></div>' +
+              '<div class="detail-item"><span class="detail-label">Organization</span><span class="detail-value">' + (currentOrgName || currentOrgType || 'Not Set') + '</span></div>' +
+              '<div class="detail-item"><span class="detail-label">Products</span><span class="detail-value">' + DEMO_DB.products.length + '</span></div>' +
+              '<div class="detail-item"><span class="detail-label">Team Size</span><span class="detail-value">' + team.length + '</span></div>' +
+              '<div class="detail-item"><span class="detail-label">Pending</span><span class="detail-value">' + pendingCount + '</span></div>' +
+              '<div class="detail-item"><span class="detail-label">Contract</span><span class="detail-value text-mono">' + Utils.shortAddr(contractAddress || DEFAULT_CONTRACT_ADDRESS) + '</span></div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
+
+        // Pending Requests
+        '<div class="card mb-lg">' +
+          '<h3 class="mb-md">📋 Pending Access Requests' + (pendingCount > 0 ? ' <span class="pill pill-warning">' + pendingCount + '</span>' : '') + '</h3>' +
+          (pendingRows ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>Wallet</th><th>Role</th><th>Organization</th><th>Date</th><th>Actions</th></tr></thead><tbody>' + pendingRows + '</tbody></table></div>' :
+           '<p class="text-secondary text-sm">No pending requests. Generate an invite QR and share it with team members.</p>') +
+        '</div>' +
+
+        // Team Members
+        '<div class="card mb-lg">' +
+          '<h3 class="mb-md">👥 Team Members' + (team.length > 0 ? ' <span class="pill pill-accent">' + team.length + '</span>' : '') + '</h3>' +
+          (teamRows ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>Wallet</th><th>Role</th><th>Organization</th><th>Granted</th><th>Actions</th></tr></thead><tbody>' + teamRows + '</tbody></table></div>' :
+           '<p class="text-secondary text-sm">No team members yet. Invite your first team member above.</p>') +
+        '</div>' +
+
+        // Failed Attempts
+        (attemptRows ? '<div class="card mb-lg">' +
+          '<h3 class="mb-md">⚠️ Unauthorized Admin Attempts <span class="pill pill-danger">' + attempts.length + '</span></h3>' +
+          '<div class="table-wrap"><table class="data-table"><thead><tr><th>Wallet</th><th>Claimed Org Type</th><th>When</th></tr></thead><tbody>' + attemptRows + '</tbody></table></div>' +
+          '<button class="btn btn-ghost btn-sm mt-md" onclick="localStorage.removeItem(\'dawatrace_admin_attempts\');routerHandler()">Clear</button>' +
+        '</div>' : '') +
+
+        // Direct Grant (for live blockchain)
+        '<div class="card">' +
+          '<h3 class="mb-md">🔑 Direct Role Grant (On-Chain)</h3>' +
+          '<p class="text-sm text-secondary mb-md">Manually grant a role to a wallet address on the smart contract.</p>' +
+          '<div class="form-group mb-md"><label class="form-label">Wallet Address</label><input type="text" id="admin-addr" class="form-input text-mono" placeholder="0x..."></div>' +
+          '<div class="form-group mb-md"><label class="form-label">Role</label><select id="admin-role" class="form-input"><option value="MANUFACTURER_ROLE">Manufacturer</option><option value="DISTRIBUTOR_ROLE">Distributor</option><option value="PHARMACY_ROLE">Pharmacy</option><option value="REGULATOR_ROLE">Regulator</option></select></div>' +
+          '<button class="btn btn-primary w-full" onclick="BlockchainService.grantRole()">Grant Role On-Chain</button>' +
+        '</div>' +
+
       '</main>' +
     '</div>';
   },
@@ -1151,6 +1255,144 @@ var RBAC = {
       currentOrgName = session.orgName || '';
       RBAC.updateAllUI();
     }
+  },
+
+  approveRequest: async function(index) {
+    var requests = JSON.parse(localStorage.getItem('dawatrace_requests') || '[]');
+    if (!requests[index]) return;
+    var req = requests[index];
+    req.status = 'APPROVED';
+    requests[index] = req;
+    localStorage.setItem('dawatrace_requests', JSON.stringify(requests));
+
+    // Add to team
+    var team = JSON.parse(localStorage.getItem('dawatrace_team') || '[]');
+    team.push({ wallet: req.wallet, role: req.role, orgName: req.orgName || currentOrgName, grantedAt: Date.now() });
+    localStorage.setItem('dawatrace_team', JSON.stringify(team));
+
+    // Try on-chain grant if connected
+    if (contract && isConnected) {
+      try {
+        var roleHash = await contract[req.role + '_ROLE']();
+        var tx = await contract.grantRole(roleHash, req.wallet);
+        await tx.wait();
+        Utils.showToast('✅ ' + req.role + ' role granted on-chain to ' + Utils.shortAddr(req.wallet), 'success');
+      } catch(e) {
+        Utils.showToast('✅ Approved locally. On-chain grant failed: ' + (e.reason || e.message), 'warning');
+      }
+    } else {
+      Utils.showToast('✅ ' + req.role + ' access approved for ' + Utils.shortAddr(req.wallet), 'success');
+    }
+    routerHandler();
+  },
+
+  rejectRequest: function(index) {
+    var requests = JSON.parse(localStorage.getItem('dawatrace_requests') || '[]');
+    if (!requests[index]) return;
+    var req = requests[index];
+    req.status = 'REJECTED';
+    requests[index] = req;
+    localStorage.setItem('dawatrace_requests', JSON.stringify(requests));
+    Utils.showToast('❌ Request from ' + Utils.shortAddr(req.wallet) + ' rejected', 'info');
+    routerHandler();
+  },
+
+  revokeTeamMember: function(index) {
+    var team = JSON.parse(localStorage.getItem('dawatrace_team') || '[]');
+    if (!team[index]) return;
+    var member = team[index];
+    team.splice(index, 1);
+    localStorage.setItem('dawatrace_team', JSON.stringify(team));
+    Utils.showToast('🚫 Revoked ' + member.role + ' access for ' + Utils.shortAddr(member.wallet), 'info');
+    routerHandler();
+  }
+};
+
+// ============================================================
+//                  INVITE SERVICE
+// ============================================================
+
+var InviteService = {
+  generate: function() {
+    var role = document.getElementById('invite-role').value;
+    var expirySec = parseInt(document.getElementById('invite-expiry').value);
+    var adminData = JSON.parse(localStorage.getItem('dawatrace_admin') || 'null');
+    var adminAddr = adminData ? adminData.wallet : '0xAdmin';
+
+    // Generate nonce
+    var nonce = '';
+    for (var i = 0; i < 8; i++) nonce += Math.floor(Math.random() * 16).toString(16);
+
+    var payload = {
+      v: 1,
+      type: 'dawatrace-invite',
+      role: role,
+      org: currentOrgName || currentOrgType || 'DawaTrace Org',
+      admin: adminAddr,
+      nonce: nonce,
+      exp: Math.floor(Date.now() / 1000) + expirySec
+    };
+
+    var encoded = btoa(JSON.stringify(payload));
+    var qrData = 'DAWATRACE-INVITE:' + encoded;
+    var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrData);
+
+    // Store invite record
+    var invites = JSON.parse(localStorage.getItem('dawatrace_invites') || '[]');
+    invites.push({ nonce: nonce, role: role, createdAt: Date.now(), expiresAt: payload.exp * 1000 });
+    localStorage.setItem('dawatrace_invites', JSON.stringify(invites));
+
+    var roleIcons = { MANUFACTURER: '🏭', DISTRIBUTOR: '🚚', PHARMACY: '💊', REGULATOR: '🏛️' };
+    var expiryLabel = expirySec < 7200 ? '1 hour' : expirySec < 172800 ? '24 hours' : expirySec < 1209600 ? '7 days' : '30 days';
+
+    var output = document.getElementById('invite-qr-output');
+    if (output) {
+      output.innerHTML = '<div style="padding:16px;background:var(--c-bg);border-radius:var(--r-md);border:1px solid var(--c-border)">' +
+        '<img src="' + qrUrl + '" alt="Invite QR" style="border-radius:8px;max-width:220px;width:100%">' +
+        '<p class="text-sm mt-sm" style="font-weight:600">' + (roleIcons[role] || '') + ' ' + role + ' Invite</p>' +
+        '<p class="text-xs text-secondary">Expires in ' + expiryLabel + '</p>' +
+        '<p class="text-xs text-mono text-secondary mt-sm" style="word-break:break-all">Nonce: ' + nonce + '</p>' +
+        '<button class="btn btn-ghost btn-sm mt-sm" onclick="InviteService.copyInvite(\'' + encoded + '\')">📋 Copy Invite Code</button>' +
+      '</div>';
+    }
+
+    Utils.showToast('📨 Invite QR generated for ' + role + ' role', 'success');
+  },
+
+  copyInvite: function(encoded) {
+    navigator.clipboard.writeText('DAWATRACE-INVITE:' + encoded).then(function() {
+      Utils.showToast('📋 Invite code copied to clipboard', 'success');
+    }).catch(function() {
+      Utils.showToast('Copy failed — use the QR code instead', 'warning');
+    });
+  },
+
+  validate: function(qrData, selectedRole) {
+    if (!qrData || !qrData.startsWith('DAWATRACE-INVITE:')) {
+      return { valid: false, error: 'Not a valid DawaTrace invite code' };
+    }
+    try {
+      var encoded = qrData.replace('DAWATRACE-INVITE:', '');
+      var payload = JSON.parse(atob(encoded));
+
+      if (payload.type !== 'dawatrace-invite') return { valid: false, error: 'Invalid invite format' };
+      if (payload.role !== selectedRole) return { valid: false, error: 'This invite is for ' + payload.role + ', not ' + selectedRole };
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return { valid: false, error: 'This invite has expired' };
+
+      // Check nonce reuse
+      var usedNonces = JSON.parse(localStorage.getItem('dawatrace_used_nonces') || '[]');
+      if (usedNonces.indexOf(payload.nonce) > -1) return { valid: false, error: 'This invite has already been used' };
+
+      return { valid: true, payload: payload };
+    } catch(e) {
+      return { valid: false, error: 'Could not decode invite: ' + e.message };
+    }
+  },
+
+  markUsed: function(nonce) {
+    var usedNonces = JSON.parse(localStorage.getItem('dawatrace_used_nonces') || '[]');
+    usedNonces.push(nonce);
+    localStorage.setItem('dawatrace_used_nonces', JSON.stringify(usedNonces));
   }
 };
 
