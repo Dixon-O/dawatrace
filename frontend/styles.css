@@ -1544,6 +1544,281 @@ tr:hover td {
    DawaTrace V2 — New Components
    ============================================================ */
 
+/* --- Burger Menu Button (mobile only, hidden on desktop) --- */
+.burger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 301;
+}
+.burger-btn span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--c-text);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+.burger-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.burger-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.burger-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* --- Burger Backdrop --- */
+.burger-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 299;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.burger-backdrop.open {
+    display: block;
+    opacity: 1;
+}
+
+/* --- Burger Slide-Out Panel --- */
+.burger-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 80vw;
+    z-index: 300;
+    background: var(--c-surface);
+    border-right: 1px solid var(--c-border);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+.burger-panel.open { transform: translateX(0); }
+
+.burger-panel-header {
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--c-border);
+    background: linear-gradient(135deg, var(--c-bg) 0%, var(--c-surface) 100%);
+}
+.burger-role-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.burger-role-icon { font-size: 28px; line-height: 1; }
+.burger-role-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--c-text);
+}
+.burger-role-org {
+    font-size: 11px;
+    color: var(--c-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.burger-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 8px;
+    gap: 2px;
+}
+.burger-nav a {
+    display: block;
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    color: var(--c-text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all var(--t-fast);
+}
+.burger-nav a:hover { background: var(--c-bg); color: var(--c-text); }
+.burger-nav a.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: 600; }
+
+.burger-panel-footer {
+    padding: 16px;
+    border-top: 1px solid var(--c-border);
+}
+
+/* --- Login Button (top-right) --- */
+.login-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--c-border);
+    background: var(--c-surface);
+    color: var(--c-text);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--t-fast);
+}
+.login-btn:hover {
+    background: var(--c-accent-light);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+}
+.login-btn-icon { font-size: 14px; }
+/* When logged in, show role-aware styling */
+.login-btn.logged-in {
+    border-color: var(--c-accent);
+    background: var(--c-accent-light);
+}
+
+/* --- Login / Role Selection Page --- */
+.login-page {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+}
+.login-page-title {
+    font-family: var(--f-heading);
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+}
+.login-page-subtitle {
+    font-size: 14px;
+    color: var(--c-text-secondary);
+    text-align: center;
+    margin-bottom: 40px;
+    max-width: 480px;
+    line-height: 1.6;
+}
+.login-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 560px;
+    width: 100%;
+}
+.login-card {
+    background: var(--c-surface);
+    border: 2px solid var(--c-border);
+    border-radius: var(--r-lg);
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-decoration: none;
+    color: var(--c-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.login-card:hover {
+    border-color: var(--c-accent);
+    background: var(--c-accent-light);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(6, 182, 212, 0.15);
+}
+.login-card-icon {
+    font-size: 48px;
+    line-height: 1;
+}
+.login-card-title {
+    font-family: var(--f-heading);
+    font-size: 18px;
+    font-weight: 700;
+}
+.login-card-desc {
+    font-size: 13px;
+    color: var(--c-text-secondary);
+    line-height: 1.5;
+}
+.login-back-link {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    transition: color var(--t-fast);
+}
+.login-back-link:hover { color: var(--c-accent); }
+
+/* Org type selector (Admin step 2) */
+.org-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    max-width: 480px;
+    width: 100%;
+}
+.org-type-card {
+    background: var(--c-surface);
+    border: 2px solid var(--c-border);
+    border-radius: var(--r-md);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.org-type-card:hover {
+    border-color: var(--c-accent);
+    background: var(--c-accent-light);
+    transform: translateY(-2px);
+}
+.org-type-card .org-icon { font-size: 32px; }
+.org-type-card .org-label { font-size: 13px; font-weight: 600; }
+
+/* Consumer note on login page */
+.consumer-note {
+    max-width: 560px;
+    width: 100%;
+    margin-top: 32px;
+    padding: 16px 20px;
+    background: var(--c-bg);
+    border-radius: var(--r-md);
+    border: 1px solid var(--c-border);
+    text-align: center;
+}
+.consumer-note p {
+    font-size: 13px;
+    color: var(--c-text-secondary);
+    line-height: 1.5;
+}
+.consumer-note a {
+    color: var(--c-accent);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .burger-btn { display: flex; }
+    .login-cards { grid-template-columns: 1fr; max-width: 360px; }
+    .org-type-grid { grid-template-columns: 1fr 1fr; }
+    .login-page { padding: 32px 16px; min-height: 50vh; }
+    .login-page-title { font-size: 24px; }
+    .login-card { padding: 24px 16px; }
+    .login-card-icon { font-size: 36px; }
+}
 
 /* --- Wallet Button (Role-Aware) --- */
 .wallet-btn {

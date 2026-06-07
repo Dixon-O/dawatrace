@@ -141,9 +141,14 @@
 
   <!-- Top Navigation -->
   <nav class="topbar" id="topbar">
-    <div class="topbar-brand" onclick="navigate('/')">
-      <div class="logo">D</div>
-      <span>DawaTrace</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="burger-btn" id="burger-btn" onclick="toggleBurgerMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-brand" onclick="navigate('/')">
+        <div class="logo">D</div>
+        <span>DawaTrace</span>
+      </div>
     </div>
     <div class="topbar-nav" id="topbar-nav">
       <a href="#/" data-route="/">Home</a>
@@ -152,9 +157,35 @@
       <a href="#/dashboard" data-route="/dashboard">Dashboard</a>
     </div>
     <div class="topbar-actions" id="topbar-actions">
-      <button class="btn btn-soft btn-sm" id="wallet-btn" onclick="BlockchainService.connectWallet()">🔗 Connect Wallet</button>
+      <button class="btn btn-sm login-btn" id="login-btn" onclick="navigate('/login')">
+        <span class="login-btn-icon">🔐</span>
+        <span class="login-btn-label" id="login-btn-label">Login</span>
+      </button>
     </div>
   </nav>
+
+  <!-- Slide-out Sidebar (mobile burger menu) -->
+  <div class="burger-backdrop" id="burger-backdrop" onclick="toggleBurgerMenu()"></div>
+  <aside class="burger-panel" id="burger-panel">
+    <div class="burger-panel-header">
+      <div class="burger-role-badge" id="burger-role-badge">
+        <span class="burger-role-icon">👤</span>
+        <div>
+          <div class="burger-role-name" id="burger-role-name">Consumer</div>
+          <div class="burger-role-org" id="burger-role-org">Public Access</div>
+        </div>
+      </div>
+    </div>
+    <nav class="burger-nav" id="burger-nav">
+      <a href="#/" onclick="toggleBurgerMenu()" data-route="/">🏠 Home</a>
+      <a href="#/verify" onclick="toggleBurgerMenu()" data-route="/verify">🔍 Verify</a>
+      <a href="#/track" onclick="toggleBurgerMenu()" data-route="/track">📦 Track</a>
+      <a href="#/dashboard" onclick="toggleBurgerMenu()" data-route="/dashboard">📊 Dashboard</a>
+    </nav>
+    <div class="burger-panel-footer">
+      <button class="btn btn-soft btn-sm w-full" id="burger-login-btn" onclick="toggleBurgerMenu();navigate('/login')">🔐 Login / Switch Role</button>
+    </div>
+  </aside>
 
   <!-- Demo Mode Banner (hidden) -->
   <div class="demo-banner" id="demo-banner" style="display:none"></div>
@@ -164,10 +195,10 @@
 
   <!-- Bottom Navigation (mobile only) -->
   <nav class="bottom-nav" id="bottom-nav">
-    <button class="bottom-nav-item" id="bn-home"     onclick="navigate('/')">      <span class="bn-icon">🏠</span><span>Home</span></button>
-    <button class="bottom-nav-item" id="bn-verify"   onclick="navigate('/verify')"> <span class="bn-icon">🔍</span><span>Verify</span></button>
-    <button class="bottom-nav-item" id="bn-track"    onclick="navigate('/track')">  <span class="bn-icon">📦</span><span>Track</span></button>
-    <button class="bottom-nav-item" id="bn-dashboard"onclick="navigate('/dashboard')"><span class="bn-icon">📊</span><span>Dashboard</span></button>
+    <button class="bottom-nav-item" id="bn-home"      onclick="navigate('/')">      <span class="bn-icon">🏠</span><span>Home</span></button>
+    <button class="bottom-nav-item" id="bn-verify"    onclick="navigate('/verify')"> <span class="bn-icon">🔍</span><span>Verify</span></button>
+    <button class="bottom-nav-item" id="bn-track"     onclick="navigate('/track')">  <span class="bn-icon">📦</span><span>Track</span></button>
+    <button class="bottom-nav-item" id="bn-dashboard" onclick="navigate('/dashboard')"><span class="bn-icon">📊</span><span>Dashboard</span></button>
   </nav>
 
   <!-- Footer -->

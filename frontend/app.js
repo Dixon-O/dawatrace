@@ -50,6 +50,9 @@ var HARDHAT_CHAIN_ID = '0x7A69';
 var provider = null, signer = null, contract = null, contractAddress = null;
 var isConnected = false, demoMode = true;
 var currentRole = 'CONSUMER';
+var currentOrgName = '';
+var currentOrgType = '';
+var loginStep = 'select'; // 'select' | 'admin-org' | 'team-role' | 'team-scan'
 var DEMO_DB = { products: [], recalledLots: [], stats: {}, metadata: {} };
 var dataLoaded = false;
 
@@ -871,6 +874,283 @@ var Renderers = {
         '</div>' +
       '</main>' +
     '</div>';
+  },
+
+  login: function() {
+    // Step 1: Admin vs Team Member
+    if (loginStep === 'select') {
+      return '<div class="login-page">' +
+        '<h1 class="login-page-title">Welcome to DawaTrace</h1>' +
+        '<p class="login-page-subtitle">Select your access level to continue. Consumer features like drug verification are available without login.</p>' +
+        '<div class="login-cards">' +
+          '<div class="login-card" onclick="loginStep=\'admin-org\';routerHandler()">' +
+            '<div class="login-card-icon">👑</div>' +
+            '<div class="login-card-title">Administrator</div>' +
+            '<div class="login-card-desc">Set up or manage your organization\'s supply chain network</div>' +
+          '</div>' +
+          '<div class="login-card" onclick="loginStep=\'team-role\';routerHandler()">' +
+            '<div class="login-card-icon">👥</div>' +
+            '<div class="login-card-title">Team Member</div>' +
+            '<div class="login-card-desc">Join an existing organization with an invite from your admin</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="consumer-note">' +
+          '<p>🔍 Just want to verify a medication? <a href="#/verify" onclick="navigate(\'/verify\')">Go to Verify</a> — no login needed.</p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Step 2a: Admin — pick org type
+    if (loginStep === 'admin-org') {
+      return '<div class="login-page">' +
+        '<h1 class="login-page-title">Administrator Setup</h1>' +
+        '<p class="login-page-subtitle">What type of organization do you administer?</p>' +
+        '<div class="org-type-grid">' +
+          '<div class="org-type-card" onclick="RBAC.startAdminConnect(\'MANUFACTURER\')">' +
+            '<div class="org-icon">🏭</div><div class="org-label">Manufacturer</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startAdminConnect(\'DISTRIBUTOR\')">' +
+            '<div class="org-icon">🚚</div><div class="org-label">Distributor</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startAdminConnect(\'PHARMACY\')">' +
+            '<div class="org-icon">💊</div><div class="org-label">Pharmacy</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startAdminConnect(\'REGULATOR\')">' +
+            '<div class="org-icon">🏛️</div><div class="org-label">Regulator</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="login-back-link" onclick="loginStep=\'select\';routerHandler()">← Back to role selection</div>' +
+      '</div>';
+    }
+
+    // Step 2b: Team Member — pick role
+    if (loginStep === 'team-role') {
+      return '<div class="login-page">' +
+        '<h1 class="login-page-title">Join Organization</h1>' +
+        '<p class="login-page-subtitle">Select your role, then scan the invite QR code from your administrator.</p>' +
+        '<div class="org-type-grid">' +
+          '<div class="org-type-card" onclick="RBAC.startTeamScan(\'MANUFACTURER\')">' +
+            '<div class="org-icon">🏭</div><div class="org-label">Manufacturer</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startTeamScan(\'DISTRIBUTOR\')">' +
+            '<div class="org-icon">🚚</div><div class="org-label">Distributor</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startTeamScan(\'PHARMACY\')">' +
+            '<div class="org-icon">💊</div><div class="org-label">Pharmacy</div>' +
+          '</div>' +
+          '<div class="org-type-card" onclick="RBAC.startTeamScan(\'REGULATOR\')">' +
+            '<div class="org-icon">🏛️</div><div class="org-label">Regulator</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="login-back-link" onclick="loginStep=\'select\';routerHandler()">← Back to role selection</div>' +
+      '</div>';
+    }
+
+    // Step 3: Team Member — scan invite
+    if (loginStep === 'team-scan') {
+      return '<div class="login-page">' +
+        '<h1 class="login-page-title">📷 Scan Invite QR</h1>' +
+        '<p class="login-page-subtitle">Point your camera at the invite QR code provided by your organization\'s administrator.</p>' +
+        '<div class="card" style="max-width:400px;width:100%;padding:24px;text-align:center">' +
+          '<div id="invite-scanner-box" style="width:100%;aspect-ratio:1;background:var(--c-bg);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;margin-bottom:16px">' +
+            '<p class="text-secondary">Camera will start here...</p>' +
+          '</div>' +
+          '<p class="text-sm text-secondary mb-md">Scanning for <strong>' + (currentOrgType || 'selected') + '</strong> role invite</p>' +
+          '<button class="btn btn-ghost btn-sm" onclick="loginStep=\'team-role\';routerHandler()">← Change Role</button>' +
+        '</div>' +
+        '<div class="login-back-link" onclick="loginStep=\'select\';routerHandler()">← Back to role selection</div>' +
+      '</div>';
+    }
+
+    // Fallback
+    loginStep = 'select';
+    return Renderers.login();
+  }
+};
+
+// ============================================================
+//                  RBAC SERVICE
+// ============================================================
+
+var RBAC = {
+  startAdminConnect: function(orgType) {
+    currentOrgType = orgType;
+    // Check if admin already exists
+    var existingAdmin = JSON.parse(localStorage.getItem('dawatrace_admin') || 'null');
+
+    if (existingAdmin) {
+      // Admin exists — user must connect wallet to verify they are that admin
+      Utils.showToast('Connecting wallet to verify admin identity...', 'info');
+      RBAC.connectAsAdmin(orgType, existingAdmin);
+    } else {
+      // No admin yet — first admin setup
+      Utils.showToast('First admin setup — connect your wallet to become administrator.', 'info');
+      RBAC.connectAsAdmin(orgType, null);
+    }
+  },
+
+  connectAsAdmin: async function(orgType, existingAdmin) {
+    // Try connecting wallet
+    if (!window.ethereum) {
+      for (var i = 0; i < 30; i++) { await Utils.delay(100); if (window.ethereum) break; }
+    }
+    if (!window.ethereum) {
+      // Demo mode — grant admin locally
+      var demoAddr = '0xDemo' + Date.now().toString(16);
+      if (existingAdmin && existingAdmin.wallet !== demoAddr) {
+        // In demo mode, allow re-entry as admin
+      }
+      currentRole = 'ADMIN';
+      currentOrgType = orgType;
+      currentOrgName = orgType + ' Organization';
+      isConnected = false;
+      demoMode = true;
+      var adminRecord = { wallet: demoAddr, orgType: orgType, orgName: currentOrgName, createdAt: Date.now() };
+      localStorage.setItem('dawatrace_admin', JSON.stringify(adminRecord));
+      localStorage.setItem('dawatrace_session', JSON.stringify({ wallet: demoAddr, role: 'ADMIN', orgType: orgType, orgName: currentOrgName }));
+      RBAC.updateAllUI();
+      Utils.showToast('Admin access granted (Demo Mode) — ' + orgType, 'success');
+      navigate('/dashboard');
+      return;
+    }
+
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      signer = await provider.getSigner();
+      var address = await signer.getAddress();
+
+      if (existingAdmin && existingAdmin.wallet.toLowerCase() !== address.toLowerCase()) {
+        // Different wallet trying to be admin — block
+        var attempt = { wallet: address, orgType: orgType, timestamp: Date.now() };
+        var attempts = JSON.parse(localStorage.getItem('dawatrace_admin_attempts') || '[]');
+        attempts.push(attempt);
+        localStorage.setItem('dawatrace_admin_attempts', JSON.stringify(attempts));
+        Utils.showToast('⛔ Organization already has an administrator. Contact them for Team Member access.', 'error');
+        loginStep = 'select';
+        routerHandler();
+        return;
+      }
+
+      // Grant admin
+      isConnected = true;
+      demoMode = false;
+      currentRole = 'ADMIN';
+      currentOrgType = orgType;
+      currentOrgName = orgType + ' Organization';
+
+      // Try on-chain role detection
+      if (!contractAddress) {
+        try { var res = await fetch('deployment.json'); if (res.ok) { var info = await res.json(); contractAddress = info.contractAddress; } } catch(e) {}
+      }
+      if (contractAddress) {
+        contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
+      }
+
+      var adminRecord = { wallet: address, orgType: orgType, orgName: currentOrgName, createdAt: Date.now() };
+      localStorage.setItem('dawatrace_admin', JSON.stringify(adminRecord));
+      localStorage.setItem('dawatrace_session', JSON.stringify({ wallet: address, role: 'ADMIN', orgType: orgType, orgName: currentOrgName }));
+      RBAC.updateAllUI();
+      Utils.showToast('👑 Admin access granted — ' + Utils.shortAddr(address), 'success');
+      navigate('/dashboard');
+
+      window.ethereum.on('accountsChanged', function() { window.location.reload(); });
+    } catch(err) {
+      console.error('Admin connect error:', err);
+      Utils.showToast('Connection failed: ' + (err.reason || err.message || 'Unknown'), 'error');
+    }
+  },
+
+  startTeamScan: function(role) {
+    currentOrgType = role;
+    loginStep = 'team-scan';
+    routerHandler();
+    // Scanner initialization will come in Phase 3
+  },
+
+  updateAllUI: function() {
+    // Update login button
+    var btn = document.getElementById('login-btn');
+    var label = document.getElementById('login-btn-label');
+    var roleIcons = { ADMIN: '👑', MANUFACTURER: '🏭', REGULATOR: '🏛️', DISTRIBUTOR: '🚚', PHARMACY: '💊', CONSUMER: '👤' };
+    if (btn && label) {
+      if (currentRole !== 'CONSUMER') {
+        btn.classList.add('logged-in');
+        label.textContent = currentRole;
+        btn.querySelector('.login-btn-icon').textContent = roleIcons[currentRole] || '👤';
+      } else {
+        btn.classList.remove('logged-in');
+        label.textContent = 'Login';
+        btn.querySelector('.login-btn-icon').textContent = '🔐';
+      }
+    }
+
+    // Update burger menu role badge
+    var roleName = document.getElementById('burger-role-name');
+    var roleOrg = document.getElementById('burger-role-org');
+    var roleIcon = document.querySelector('.burger-role-icon');
+    if (roleName) roleName.textContent = currentRole === 'CONSUMER' ? 'Consumer' : currentRole;
+    if (roleOrg) roleOrg.textContent = currentRole === 'CONSUMER' ? 'Public Access' : (currentOrgName || currentOrgType);
+    if (roleIcon) roleIcon.textContent = roleIcons[currentRole] || '👤';
+
+    // Update burger nav (add admin link if admin)
+    var burgerNav = document.getElementById('burger-nav');
+    if (burgerNav) {
+      var adminLink = burgerNav.querySelector('[data-route="/admin"]');
+      if (currentRole === 'ADMIN' && !adminLink) {
+        var a = document.createElement('a');
+        a.href = '#/admin';
+        a.setAttribute('data-route', '/admin');
+        a.textContent = '⚙️ Admin Panel';
+        a.onclick = function() { toggleBurgerMenu(); };
+        burgerNav.appendChild(a);
+      } else if (currentRole !== 'ADMIN' && adminLink) {
+        adminLink.remove();
+      }
+    }
+
+    // Update burger login button text
+    var burgerLoginBtn = document.getElementById('burger-login-btn');
+    if (burgerLoginBtn) {
+      burgerLoginBtn.textContent = currentRole !== 'CONSUMER' ? '🚪 Logout' : '🔐 Login / Switch Role';
+      if (currentRole !== 'CONSUMER') {
+        burgerLoginBtn.onclick = function() { toggleBurgerMenu(); RBAC.logout(); };
+      } else {
+        burgerLoginBtn.onclick = function() { toggleBurgerMenu(); navigate('/login'); };
+      }
+    }
+
+    // Update existing wallet-related UI
+    var banner = document.getElementById('demo-banner');
+    var netPill = document.getElementById('network-status');
+    if (banner) banner.style.display = 'none';
+    if (netPill) netPill.textContent = demoMode ? 'Demo Mode' : 'Live';
+  },
+
+  logout: function() {
+    isConnected = false;
+    demoMode = true;
+    contract = null;
+    signer = null;
+    provider = null;
+    currentRole = 'CONSUMER';
+    currentOrgName = '';
+    currentOrgType = '';
+    loginStep = 'select';
+    localStorage.removeItem('dawatrace_session');
+    RBAC.updateAllUI();
+    Utils.showToast('Logged out successfully', 'success');
+    navigate('/');
+  },
+
+  restoreSession: function() {
+    var session = JSON.parse(localStorage.getItem('dawatrace_session') || 'null');
+    if (session && session.role && session.role !== 'CONSUMER') {
+      currentRole = session.role;
+      currentOrgType = session.orgType || '';
+      currentOrgName = session.orgName || '';
+      RBAC.updateAllUI();
+    }
   }
 };
 
@@ -1512,6 +1792,11 @@ function routerHandler() {
     if (el) el.classList.add('active');
   }
 
+  // Sync burger nav active state
+  document.querySelectorAll('#burger-nav a').forEach(function(a) {
+    a.classList.toggle('active', a.dataset.route === cleanPath);
+  });
+
   switch (cleanPath) {
     case '/': UI.render(Renderers.landing); break;
     case '/verify': UI.render(Renderers.verify); break;
@@ -1520,6 +1805,7 @@ function routerHandler() {
     case '/analytics': UI.render(Renderers.analytics); break;
     case '/recalls': UI.render(Renderers.recalls); break;
     case '/admin': UI.render(Renderers.admin); break;
+    case '/login': UI.render(Renderers.login); break;
     default: UI.render(Renderers.landing);
   }
 
@@ -1544,6 +1830,19 @@ function initTableSwipeHints() {
 
 
 window.addEventListener('hashchange', routerHandler);
+
+// Burger menu toggle
+function toggleBurgerMenu() {
+  var panel = document.getElementById('burger-panel');
+  var backdrop = document.getElementById('burger-backdrop');
+  var btn = document.getElementById('burger-btn');
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  backdrop.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
 
 document.addEventListener('DOMContentLoaded', async function() {
   // Load dataset — try relative path first, then absolute, with content-type validation
@@ -1581,16 +1880,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (dRes2.ok) { var dInfo2 = await dRes2.json(); contractAddress = dInfo2.contractAddress; }
   } catch(e2) {}
 
-  BlockchainService.updateWalletUI();
+  // Restore RBAC session + update all UI
+  RBAC.restoreSession();
+  RBAC.updateAllUI();
+
   routerHandler();
   // Dismiss splash screen
   window.dispatchEvent(new CustomEvent('dawatraceReady'));
-
-  // Auto-connect if wallet already authorized
-  if (window.ethereum) {
-    try {
-      var accts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (accts && accts.length > 0) BlockchainService.connectWallet();
-    } catch(e) {}
-  }
 });
