@@ -702,67 +702,62 @@ var Renderers = {
   dashboard: function() {
     var canRegister = currentRole === 'MANUFACTURER' || currentRole === 'ADMIN';
     var canRecall = currentRole === 'REGULATOR' || currentRole === 'ADMIN';
+    var roleIcons = { ADMIN: '👑', MANUFACTURER: '🏭', DISTRIBUTOR: '🚚', PHARMACY: '💊', REGULATOR: '🏛️', CONSUMER: '👤' };
+    var roleIcon = roleIcons[currentRole] || '👤';
 
-    // Role access banner for consumers
+    // Role access banner
     var accessBanner = '';
     if (currentRole === 'CONSUMER') {
-      accessBanner = '<div class="role-banner role-banner-consumer mb-lg">' +
-        '<div class="role-banner-content">' +
-          '<span class="role-banner-icon">👤</span>' +
-          '<div><strong>Consumer Access</strong>' +
-          '<p class="text-sm" style="margin:2px 0 0;opacity:0.85">You are viewing the public product registry. Connect a wallet with Manufacturer/Admin role for full access.</p></div>' +
-        '</div>' +
-        (!isConnected ? '<button class="btn btn-sm btn-soft" onclick="BlockchainService.connectWallet()">🔗 Connect Wallet</button>' : '') +
-      '</div>';
+      accessBanner = '<div class="role-banner role-banner-consumer mb-lg"><div class="role-banner-content"><span class="role-banner-icon">👤</span><div><strong>Consumer Access</strong><p class="text-sm" style="margin:2px 0 0;opacity:0.85">Viewing the public registry. <a href="#/login" style="color:var(--c-accent);font-weight:600">Login</a> for full access.</p></div></div></div>';
     } else {
-      var roleLabel = currentRole === 'ADMIN' ? '👑 Admin Access' : currentRole === 'MANUFACTURER' ? '🏭 Manufacturer Access' : '🏛️ ' + currentRole + ' Access';
-      accessBanner = '<div class="role-banner role-banner-elevated mb-lg">' +
-        '<div class="role-banner-content"><span class="role-banner-icon">✅</span>' +
-        '<div><strong>' + roleLabel + '</strong>' +
-        '<p class="text-sm" style="margin:2px 0 0;opacity:0.85">Full product registration, recall, and management features enabled.</p></div></div>' +
-      '</div>';
+      var roleDesc = { ADMIN:'Full system access enabled.', MANUFACTURER:'Product registration and batch management.', DISTRIBUTOR:'Custody transfer and shipment tracking.', PHARMACY:'Product receipt and dispensing.', REGULATOR:'Supply chain audit and recall management.' };
+      accessBanner = '<div class="role-banner role-banner-elevated mb-lg"><div class="role-banner-content"><span class="role-banner-icon">' + roleIcon + '</span><div><strong>' + roleIcon + ' ' + currentRole + (currentOrgName ? ' — ' + currentOrgName : '') + '</strong><p class="text-sm" style="margin:2px 0 0;opacity:0.85">' + (roleDesc[currentRole]||'') + '</p></div></div></div>';
     }
 
-    // Build batch table from DEMO_DB
+    // Sidebar links (role-specific)
+    var sidebarLinks = '<a href="#/dashboard" class="active">' + roleIcon + ' Dashboard</a>';
+    if (currentRole !== 'CONSUMER') sidebarLinks += '<a href="#/analytics">📊 Analytics</a>';
+    if (currentRole !== 'CONSUMER') sidebarLinks += '<a href="#/recalls">🚨 Recalls</a>';
+    if (currentRole === 'ADMIN') sidebarLinks += '<a href="#/admin">⚙️ Admin</a>';
+
+    // Build product table
     var rows = '';
     var displayProducts = DEMO_DB.products.filter(function(p) { return p.exists !== false; }).slice(0, 50);
     displayProducts.forEach(function(p) {
       var statusPill = '<span class="pill pill-' + (p.status === 'GENUINE' ? 'success' : p.status === 'EXPIRED' ? 'warning' : 'danger') + '">' + p.status + '</span>';
-      rows += '<tr class="batch-tr" data-name="' + p.productName.toLowerCase() + '" data-id="' + p.serialNumber.toLowerCase() + '">' +
-        '<td class="text-mono text-sm">' + p.serialNumber + '</td>' +
-        '<td>' + p.productName + '</td>' +
-        '<td>' + p.manufacturer + '</td>' +
-        '<td>' + statusPill + '</td>' +
-        '<td>' + Utils.formatDate(p.expiryDate) + '</td>' +
-        '<td><button class="btn btn-ghost btn-sm" onclick="navigate(\'/verify\');setTimeout(function(){document.getElementById(\'batch-input\').value=\'' + p.serialNumber + '\';UI.switchVerifyTab(\'manual\');BlockchainService.verifyProduct()},100)">Verify</button>' +
-          '<button class="btn btn-ghost btn-sm" onclick="UI.showQRModal(\'' + p.serialNumber + '\',\'' + p.gtin + '\')">QR</button></td>' +
-      '</tr>';
+      rows += '<tr class="batch-tr" data-name="' + p.productName.toLowerCase() + '" data-id="' + p.serialNumber.toLowerCase() + '"><td class="text-mono text-sm">' + p.serialNumber + '</td><td>' + p.productName + '</td><td>' + p.manufacturer + '</td><td>' + statusPill + '</td><td>' + Utils.formatDate(p.expiryDate) + '</td><td><button class="btn btn-ghost btn-sm" onclick="navigate(\'/verify\');setTimeout(function(){document.getElementById(\'batch-input\').value=\'' + p.serialNumber + '\';UI.switchVerifyTab(\'manual\');BlockchainService.verifyProduct()},100)">Verify</button> <button class="btn btn-ghost btn-sm" onclick="UI.showQRModal(\'' + p.serialNumber + '\',\'' + p.gtin + '\')">QR</button></td></tr>';
     });
 
-    var emptyMsg = displayProducts.length === 0 ? '<div class="empty-state" style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">📦</div><p class="text-secondary">No products registered yet.</p>' + (canRegister ? '<button class="btn btn-primary mt-md" onclick="UI.showRegisterModal()">Register First Product</button>' : '<p class="text-sm text-muted mt-sm">Products will appear here once data loads or when connected to a node with registered products.</p>') + '</div>' : '';
-    var registerBtn = canRegister ? '<button class="btn btn-primary" onclick="UI.showRegisterModal()">+ Register Product</button>' : '';
-    var recallBtn = canRecall ? '<button class="btn btn-danger" onclick="UI.showRecallModal()">🚨 Issue Recall</button>' : '';
+    var emptyMsg = displayProducts.length === 0 ? '<div class="empty-state" style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">📦</div><p class="text-secondary">No products registered yet.</p>' + (canRegister ? '<button class="btn btn-primary mt-md" onclick="UI.showRegisterModal()">Register First Product</button>' : '<p class="text-sm text-muted mt-sm">Products will appear here once data loads.</p>') + '</div>' : '';
+    var actionBtns = '';
+    if (canRegister) actionBtns += '<button class="btn btn-primary" onclick="UI.showRegisterModal()">+ Register Product</button> ';
+    if (canRecall) actionBtns += '<button class="btn btn-danger" onclick="UI.showRecallModal()">🚨 Issue Recall</button> ';
+
+    // Role-specific sections
+    var roleSections = '';
+    if (currentRole === 'MANUFACTURER' || currentRole === 'ADMIN') {
+      var gc = displayProducts.filter(function(p){return p.status==='GENUINE'}).length;
+      roleSections = '<div class="grid-3 mb-lg mt-lg"><div class="stat-card"><div class="stat-number">' + displayProducts.length + '</div><div class="stat-label">My Products</div></div><div class="stat-card"><div class="stat-number" style="color:var(--c-success)">' + gc + '</div><div class="stat-label">Genuine</div></div><div class="stat-card"><div class="stat-number" style="color:var(--c-warning)">' + (displayProducts.length-gc) + '</div><div class="stat-label">Flagged</div></div></div>';
+    }
+    if (currentRole === 'DISTRIBUTOR') {
+      roleSections = '<div class="grid-2 mt-lg"><div class="card"><h3 class="mb-md">📥 Incoming Shipments</h3><p class="text-secondary text-sm">Products transferred to your custody.</p><div class="empty-state" style="padding:20px"><p class="text-sm text-muted">No pending shipments</p></div></div><div class="card"><h3 class="mb-md">📤 Outgoing Transfers</h3><p class="text-secondary text-sm">Initiate custody transfers to pharmacies.</p><button class="btn btn-soft btn-sm mt-md" onclick="Utils.showToast(\'Transfer feature active in live mode\',\'info\')">+ New Transfer</button></div></div>';
+    }
+    if (currentRole === 'PHARMACY') {
+      roleSections = '<div class="grid-2 mt-lg"><div class="card"><h3 class="mb-md">📥 Receive Products</h3><p class="text-secondary text-sm">Confirm receipt of products from distributors.</p><div class="empty-state" style="padding:20px"><p class="text-sm text-muted">No pending deliveries</p></div></div><div class="card"><h3 class="mb-md">💊 Verify & Dispense</h3><p class="text-secondary text-sm">Scan a product before dispensing to patients.</p><button class="btn btn-primary btn-sm mt-md" onclick="navigate(\'/verify\')">🔍 Verify Product</button></div></div>';
+    }
+    if (currentRole === 'REGULATOR') {
+      var s = DEMO_DB.stats||{};
+      roleSections = '<div class="grid-3 mb-lg mt-lg"><div class="stat-card"><div class="stat-number">' + displayProducts.length + '</div><div class="stat-label">Registry Total</div></div><div class="stat-card"><div class="stat-number" style="color:var(--c-danger)">' + ((s.recalled||0)+(s.counterfeit||0)) + '</div><div class="stat-label">Flagged</div></div><div class="stat-card"><div class="stat-number" style="color:var(--c-accent)">' + (DEMO_DB.recalledLots||[]).length + '</div><div class="stat-label">Recalled Lots</div></div></div><div class="card"><h3 class="mb-md">🔍 Audit Actions</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="navigate(\'/analytics\')">📊 Analytics</button><button class="btn btn-danger btn-sm" onclick="navigate(\'/recalls\')">🚨 Recalls</button><button class="btn btn-soft btn-sm" onclick="navigate(\'/verify\')">🔍 Verify</button></div></div>';
+    }
 
     return '<div class="dashboard-layout">' +
-      '<aside class="sidebar">' +
-        '<div class="sidebar-header"><h3>Dashboard</h3><span class="pill pill-accent">' + currentRole + '</span></div>' +
-        '<nav class="sidebar-nav">' +
-          '<a href="#/dashboard" class="active">📦 Products</a>' +
-          '<a href="#/analytics">📊 Analytics</a>' +
-          '<a href="#/recalls">🚨 Recalls</a>' +
-          (currentRole === 'ADMIN' ? '<a href="#/admin">⚙️ Admin</a>' : '') +
-        '</nav>' +
-      '</aside>' +
-      '<main class="dashboard-main">' +
-        accessBanner +
-        '<div class="dash-header mb-lg">' +
-          '<h2>Product Registry</h2>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + registerBtn + recallBtn + '</div>' +
-        '</div>' +
+      '<aside class="sidebar"><div class="sidebar-header"><h3>Dashboard</h3><span class="pill pill-accent">' + currentRole + '</span></div><nav class="sidebar-nav">' + sidebarLinks + '</nav></aside>' +
+      '<main class="dashboard-main">' + accessBanner +
+        '<div class="dash-header mb-lg"><h2>' + roleIcon + ' ' + (currentRole === 'CONSUMER' ? 'Product Registry' : currentRole + ' Dashboard') + '</h2><div style="display:flex;gap:8px;flex-wrap:wrap">' + actionBtns + '</div></div>' +
         '<div class="card mb-md"><input type="text" id="batch-search" class="form-input" placeholder="Search by name or serial..." oninput="UI.filterBatches()"></div>' +
         (emptyMsg || '<div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th>Serial</th><th>Product</th><th>Manufacturer</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="batch-table">' + rows + '</tbody></table></div></div>') +
-      '</main>' +
-    '</div>';
+        roleSections +
+      '</main></div>';
   },
 
   analytics: function() {
