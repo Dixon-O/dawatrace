@@ -1052,17 +1052,27 @@ var Renderers = {
 
     // Step 3: Team Member — scan invite
     if (loginStep === 'team-scan') {
+      var roleIcons = { MANUFACTURER: '🏭', DISTRIBUTOR: '🚚', PHARMACY: '💊', REGULATOR: '🏛️' };
       return '<div class="login-page">' +
         '<h1 class="login-page-title">📷 Scan Invite QR</h1>' +
-        '<p class="login-page-subtitle">Point your camera at the invite QR code provided by your organization\'s administrator.</p>' +
-        '<div class="card" style="max-width:400px;width:100%;padding:24px;text-align:center">' +
-          '<div id="invite-scanner-box" style="width:100%;aspect-ratio:1;background:var(--c-bg);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;margin-bottom:16px">' +
-            '<p class="text-secondary">Camera will start here...</p>' +
+        '<p class="login-page-subtitle">Scan the invite QR code from your administrator, or paste the invite code below.</p>' +
+        '<div class="card" style="max-width:420px;width:100%;padding:24px">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;justify-content:center">' +
+            '<span style="font-size:24px">' + (roleIcons[currentOrgType] || '👤') + '</span>' +
+            '<span style="font-weight:600">' + (currentOrgType || 'Selected') + ' Role</span>' +
           '</div>' +
-          '<p class="text-sm text-secondary mb-md">Scanning for <strong>' + (currentOrgType || 'selected') + '</strong> role invite</p>' +
-          '<button class="btn btn-ghost btn-sm" onclick="loginStep=\'team-role\';routerHandler()">← Change Role</button>' +
+          '<div id="invite-scanner-box" style="width:100%;min-height:280px;background:var(--c-bg);border-radius:var(--r-md);overflow:hidden;margin-bottom:16px;position:relative"></div>' +
+          '<div id="invite-scan-status" class="text-sm text-secondary text-center mb-md">Initializing camera...</div>' +
+          '<div style="border-top:1px solid var(--c-border);margin:16px 0;position:relative;text-align:center">' +
+            '<span style="background:var(--c-surface);padding:0 12px;position:relative;top:-10px;font-size:12px;color:var(--c-text-muted)">OR PASTE INVITE CODE</span>' +
+          '</div>' +
+          '<div class="form-group mb-md">' +
+            '<input type="text" id="invite-paste-input" class="form-input text-mono text-sm" placeholder="DAWATRACE-INVITE:eyJ...">' +
+          '</div>' +
+          '<button class="btn btn-primary w-full mb-sm" onclick="RBAC.processInvitePaste()">Submit Invite Code</button>' +
+          '<button class="btn btn-ghost btn-sm w-full" onclick="RBAC.stopInviteScanner();loginStep=\'team-role\';routerHandler()">← Change Role</button>' +
         '</div>' +
-        '<div class="login-back-link" onclick="loginStep=\'select\';routerHandler()">← Back to role selection</div>' +
+        '<div class="login-back-link" onclick="RBAC.stopInviteScanner();loginStep=\'select\';routerHandler()">← Back to role selection</div>' +
       '</div>';
     }
 
@@ -1165,11 +1175,114 @@ var RBAC = {
     }
   },
 
+  inviteScanner: null,
+
   startTeamScan: function(role) {
     currentOrgType = role;
     loginStep = 'team-scan';
     routerHandler();
-    // Scanner initialization will come in Phase 3
+    // Start camera scanner after DOM renders
+    setTimeout(function() {
+      var box = document.getElementById('invite-scanner-box');
+      var status = document.getElementById('invite-scan-status');
+      if (!box) return;
+      if (typeof Html5Qrcode === 'undefined') {
+        if (status) status.textContent = 'Camera scanner not available. Paste the invite code below.';
+        return;
+      }
+      try {
+        RBAC.inviteScanner = new Html5Qrcode('invite-scanner-box');
+        RBAC.inviteScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          function(decodedText) {
+            RBAC.stopInviteScanner();
+            RBAC.processInviteResult(decodedText);
+          },
+          function() {} // ignore scan errors
+        ).then(function() {
+          if (status) status.textContent = 'Camera active — point at invite QR code';
+        }).catch(function(err) {
+          if (status) status.textContent = 'Camera unavailable: ' + (err.message || err) + '. Paste the code below.';
+        });
+      } catch(e) {
+        if (status) status.textContent = 'Scanner error. Paste the invite code below.';
+      }
+    }, 300);
+  },
+
+  stopInviteScanner: function() {
+    if (RBAC.inviteScanner) {
+      try { RBAC.inviteScanner.stop().catch(function(){}); } catch(e) {}
+      RBAC.inviteScanner = null;
+    }
+  },
+
+  processInvitePaste: function() {
+    var input = document.getElementById('invite-paste-input');
+    if (!input || !input.value.trim()) {
+      Utils.showToast('Please paste an invite code', 'warning');
+      return;
+    }
+    RBAC.stopInviteScanner();
+    RBAC.processInviteResult(input.value.trim());
+  },
+
+  processInviteResult: async function(qrData) {
+    var result = InviteService.validate(qrData, currentOrgType);
+    if (!result.valid) {
+      Utils.showToast('❌ ' + result.error, 'error');
+      var status = document.getElementById('invite-scan-status');
+      if (status) status.innerHTML = '<span style="color:var(--c-error)">❌ ' + result.error + '</span>';
+      return;
+    }
+
+    var payload = result.payload;
+    Utils.showToast('✅ Valid invite from ' + payload.org + '. Connect your wallet to submit request.', 'success');
+
+    // Mark nonce used
+    InviteService.markUsed(payload.nonce);
+
+    // Try wallet connect for the team member
+    var walletAddr = '';
+    if (window.ethereum) {
+      try {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send('eth_requestAccounts', []);
+        signer = await provider.getSigner();
+        walletAddr = await signer.getAddress();
+        isConnected = true;
+        demoMode = false;
+      } catch(e) {
+        walletAddr = '0xTeam' + Date.now().toString(16);
+        demoMode = true;
+      }
+    } else {
+      walletAddr = '0xTeam' + Date.now().toString(16);
+      demoMode = true;
+    }
+
+    // Create pending request
+    var requests = JSON.parse(localStorage.getItem('dawatrace_requests') || '[]');
+    requests.push({
+      wallet: walletAddr,
+      role: currentOrgType,
+      orgName: payload.org,
+      adminWallet: payload.admin,
+      nonce: payload.nonce,
+      timestamp: Date.now(),
+      status: 'PENDING'
+    });
+    localStorage.setItem('dawatrace_requests', JSON.stringify(requests));
+
+    // Save partial session (pending)
+    currentRole = 'CONSUMER'; // stays consumer until approved
+    currentOrgName = payload.org;
+    loginStep = 'select';
+
+    RBAC.updateAllUI();
+    Utils.showToast('📨 Access request submitted! Your administrator will review and approve your request.', 'success');
+    navigate('/');
   },
 
   updateAllUI: function() {
