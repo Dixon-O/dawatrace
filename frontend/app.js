@@ -1546,16 +1546,30 @@ function initTableSwipeHints() {
 window.addEventListener('hashchange', routerHandler);
 
 document.addEventListener('DOMContentLoaded', async function() {
-  // Load dataset
+  // Load dataset — try relative path first, then absolute, with content-type validation
+  async function loadProducts(url) {
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var ct = res.headers.get('content-type') || '';
+    if (ct.indexOf('json') === -1 && ct.indexOf('octet') === -1) {
+      console.warn('Dataset fetch returned non-JSON content-type:', ct, 'from', url);
+      return null;
+    }
+    return await res.json();
+  }
+
   try {
-    var res = await fetch('data/products.json');
-    if (res.ok) {
-      var data = await res.json();
+    var data = await loadProducts('data/products.json');
+    if (!data) data = await loadProducts('/data/products.json');
+    if (!data) data = await loadProducts('./data/products.json');
+    if (data && data.products) {
       DEMO_DB = data;
       dataLoaded = true;
       console.log('Dataset loaded:', data.products.length, 'products');
+    } else {
+      console.warn('Dataset: no valid product data found');
     }
-  } catch(e) { console.log('Dataset load error:', e); }
+  } catch(e) { console.error('Dataset load error:', e); }
 
   // Load contract address
   try {
