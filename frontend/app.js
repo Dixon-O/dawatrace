@@ -184,6 +184,13 @@ var RiskEngine = {
     if (lookupResult.apiVerified) {
       trust = 50;
       signals.push(flag + ' Product verified via ' + src + ' — confirmed real product');
+    } else if (lookupResult.kenyaVerified && lookupResult.whoPrequalified) {
+      trust = 65;
+      signals.push('✅ WHO Prequalified medicine — meets international quality standards');
+      signals.push('🇰🇪 Verified in Kenya pharmaceutical import database');
+    } else if (lookupResult.kenyaVerified) {
+      trust = 55;
+      signals.push('🇰🇪 Found in Kenya pharmaceutical import database (' + src + ')');
     } else if (lookupResult.whoMatch) {
       trust = 42;
       signals.push('🏥 Matches WHO Essential Medicine: ' + lookupResult.whoMatch.n + ' (' + lookupResult.whoMatch.c + ')');
@@ -194,6 +201,7 @@ var RiskEngine = {
 
     if (lookupResult.manufacturer) signals.push('🏭 Manufacturer: ' + lookupResult.manufacturer);
     if (lookupResult.regulatoryBody) signals.push('📋 Regulatory body: ' + lookupResult.regulatoryBody);
+    if (lookupResult.whoPrequalified) signals.push('🏥 WHO Prequalification Programme approved');
     signals.push('⚠️ NOT tracked in DawaTrace blockchain — no provenance data');
     signals.push('🔗 No on-chain supply chain events available');
     signals.push('ℹ️ This product exists but has not been registered in our verification system');
@@ -221,6 +229,25 @@ var GlobalLookup = {
         result.flag = geo.flag;
         result.gs1Prefix = geo.prefix;
         result.regulatoryBody = this.getRegulator(geo.country);
+      }
+    }
+
+    // Step 0.5: Kenya Pharmaceutical Database (instant, highest priority for Kenya market)
+    if (typeof KenyaPharmaDB !== 'undefined') {
+      var keResult = KenyaPharmaDB.search(query);
+      if (keResult) {
+        result.found = true;
+        result.source = keResult.source;
+        result.productName = keResult.productName;
+        result.genericName = keResult.genericName;
+        result.manufacturer = keResult.manufacturer;
+        result.dosageForm = keResult.category;
+        result.country = keResult.sourceCountry;
+        result.flag = keResult.flag;
+        result.whoPrequalified = keResult.whoPrequalified;
+        result.regulatoryBody = this.getRegulator(keResult.sourceCountry);
+        result.kenyaVerified = true;
+        return result;
       }
     }
 
@@ -647,6 +674,8 @@ var Renderers = {
         (data.source ? '<div class="detail-item"><span class="detail-label">Data Source</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">' + data.source + '</span></span></div>' : '') +
         (data.ndc ? '<div class="detail-item"><span class="detail-label">NDC</span><span class="detail-value text-mono">' + data.ndc + '</span></div>' : '') +
         (data.dosageForm ? '<div class="detail-item"><span class="detail-label">Dosage Form</span><span class="detail-value">' + data.dosageForm + '</span></div>' : '') +
+        (data.whoPrequalified ? '<div class="detail-item"><span class="detail-label">WHO Status</span><span class="detail-value"><span class="pill pill-success" style="font-size:11px">✅ WHO Prequalified</span></span></div>' : '') +
+        (data.kenyaVerified ? '<div class="detail-item"><span class="detail-label">Kenya Market</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">🇰🇪 Kenya Import Verified</span></span></div>' : '') +
       '</div>';
     }
 
@@ -1852,7 +1881,7 @@ var BlockchainService = {
       }
 
       // --- GLOBAL HOT LOOKUP: Multi-source cascade ---
-      Utils.showToast('Not in local database — searching global pharmaceutical registries...', 'info');
+      Utils.showToast('Not in local database — searching Kenya import registries & global sources...', 'info');
       try {
         var globalResult = await GlobalLookup.lookup(query);
         if (globalResult && globalResult.found) {
@@ -1875,7 +1904,10 @@ var BlockchainService = {
             genericName: globalResult.genericName,
             dosageForm: globalResult.dosageForm,
             regulatoryBody: globalResult.regulatoryBody,
-            ndc: globalResult.ndc
+            ndc: globalResult.ndc,
+            whoPrequalified: globalResult.whoPrequalified || false,
+            kenyaVerified: globalResult.kenyaVerified || false,
+            sourceCountry: globalResult.country
           };
           var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
           UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
