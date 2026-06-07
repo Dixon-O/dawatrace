@@ -700,6 +700,26 @@ var Renderers = {
     var canRegister = currentRole === 'MANUFACTURER' || currentRole === 'ADMIN';
     var canRecall = currentRole === 'REGULATOR' || currentRole === 'ADMIN';
 
+    // Role access banner for consumers
+    var accessBanner = '';
+    if (currentRole === 'CONSUMER') {
+      accessBanner = '<div class="role-banner role-banner-consumer mb-lg">' +
+        '<div class="role-banner-content">' +
+          '<span class="role-banner-icon">👤</span>' +
+          '<div><strong>Consumer Access</strong>' +
+          '<p class="text-sm" style="margin:2px 0 0;opacity:0.85">You are viewing the public product registry. Connect a wallet with Manufacturer/Admin role for full access.</p></div>' +
+        '</div>' +
+        (!isConnected ? '<button class="btn btn-sm btn-soft" onclick="BlockchainService.connectWallet()">🔗 Connect Wallet</button>' : '') +
+      '</div>';
+    } else {
+      var roleLabel = currentRole === 'ADMIN' ? '👑 Admin Access' : currentRole === 'MANUFACTURER' ? '🏭 Manufacturer Access' : '🏛️ ' + currentRole + ' Access';
+      accessBanner = '<div class="role-banner role-banner-elevated mb-lg">' +
+        '<div class="role-banner-content"><span class="role-banner-icon">✅</span>' +
+        '<div><strong>' + roleLabel + '</strong>' +
+        '<p class="text-sm" style="margin:2px 0 0;opacity:0.85">Full product registration, recall, and management features enabled.</p></div></div>' +
+      '</div>';
+    }
+
     // Build batch table from DEMO_DB
     var rows = '';
     var displayProducts = DEMO_DB.products.filter(function(p) { return p.exists !== false; }).slice(0, 50);
@@ -716,6 +736,7 @@ var Renderers = {
       '</tr>';
     });
 
+    var emptyMsg = displayProducts.length === 0 ? '<div class="empty-state" style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">📦</div><p class="text-secondary">No products registered yet.</p>' + (canRegister ? '<button class="btn btn-primary mt-md" onclick="UI.showRegisterModal()">Register First Product</button>' : '<p class="text-sm text-muted mt-sm">Products will appear here once data loads or when connected to a node with registered products.</p>') + '</div>' : '';
     var registerBtn = canRegister ? '<button class="btn btn-primary" onclick="UI.showRegisterModal()">+ Register Product</button>' : '';
     var recallBtn = canRecall ? '<button class="btn btn-danger" onclick="UI.showRecallModal()">🚨 Issue Recall</button>' : '';
 
@@ -730,12 +751,13 @@ var Renderers = {
         '</nav>' +
       '</aside>' +
       '<main class="dashboard-main">' +
+        accessBanner +
         '<div class="dash-header mb-lg">' +
           '<h2>Product Registry</h2>' +
-          '<div style="display:flex;gap:8px">' + registerBtn + recallBtn + '</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + registerBtn + recallBtn + '</div>' +
         '</div>' +
         '<div class="card mb-md"><input type="text" id="batch-search" class="form-input" placeholder="Search by name or serial..." oninput="UI.filterBatches()"></div>' +
-        '<div class="card table-wrap"><table class="data-table"><thead><tr><th>Serial</th><th>Product</th><th>Manufacturer</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="batch-table">' + rows + '</tbody></table></div>' +
+        (emptyMsg || '<div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th>Serial</th><th>Product</th><th>Manufacturer</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="batch-table">' + rows + '</tbody></table></div></div>') +
       '</main>' +
     '</div>';
   },
@@ -812,8 +834,8 @@ var Renderers = {
       '</aside>' +
       '<main class="dashboard-main">' +
         '<h2 class="mb-lg">⚠️ Active Recalls</h2>' +
-        '<div class="card mb-lg"><h3 class="mb-md">Recalled Lots</h3><table class="data-table"><thead><tr><th>Lot</th><th>Reason</th><th>Date</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-        '<div class="card"><h3 class="mb-md">Affected Products</h3><table class="data-table"><thead><tr><th>Serial</th><th>Product</th><th>Manufacturer</th><th>Lot</th><th>Reason</th></tr></thead><tbody>' + prodRows + '</tbody></table></div>' +
+        '<div class="card mb-lg"><h3 class="mb-md">Recalled Lots</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Lot</th><th>Reason</th><th>Date</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+        '<div class="card"><h3 class="mb-md">Affected Products</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Serial</th><th>Product</th><th>Manufacturer</th><th>Lot</th><th>Reason</th></tr></thead><tbody>' + prodRows + '</tbody></table></div></div>' +
       '</main>' +
     '</div>';
   },
@@ -1086,16 +1108,37 @@ var BlockchainService = {
     var btn = document.getElementById('wallet-btn');
     var banner = document.getElementById('demo-banner');
     var netPill = document.getElementById('network-status');
-    if (btn) btn.innerHTML = isConnected ? '🟢 Connected' : '🔗 Connect Wallet';
     if (banner) banner.style.display = 'none';
     if (netPill) netPill.textContent = demoMode ? 'Demo Mode' : 'Live';
+
+    // Role-aware wallet button
+    if (btn) {
+      if (!isConnected) {
+        btn.className = 'btn btn-sm wallet-btn wallet-disconnected';
+        btn.innerHTML = '<span class="wallet-icon">🔗</span><span class="wallet-label">Connect Wallet</span>';
+      } else {
+        var roleColors = { ADMIN: '#7C3AED', MANUFACTURER: '#06B6D4', REGULATOR: '#F59E0B', DISTRIBUTOR: '#10B981', PHARMACY: '#3B82F6', CONSUMER: '#64748B' };
+        var roleIcons = { ADMIN: '👑', MANUFACTURER: '🏭', REGULATOR: '🏛️', DISTRIBUTOR: '🚚', PHARMACY: '💊', CONSUMER: '👤' };
+        var rc = roleColors[currentRole] || '#64748B';
+        var ri = roleIcons[currentRole] || '👤';
+        btn.className = 'btn btn-sm wallet-btn wallet-connected';
+        btn.innerHTML = '<span class="wallet-role-dot" style="background:' + rc + '"></span>' +
+          '<span class="wallet-label">' + ri + ' ' + currentRole + '</span>';
+      }
+    }
+
+    // Update bottom nav role indicator
+    var bnDash = document.getElementById('bn-dashboard');
+    if (bnDash && isConnected && currentRole !== 'CONSUMER') {
+      bnDash.querySelector('.bn-icon').textContent = currentRole === 'ADMIN' ? '👑' : '📊';
+    }
   },
 
   connectWallet: async function() {
     if (isConnected) {
       isConnected = false; demoMode = true; contract = null; signer = null; provider = null;
       currentRole = 'CONSUMER';
-      Utils.showToast('Disconnected', 'success');
+      Utils.showToast('Wallet disconnected', 'success');
       BlockchainService.updateWalletUI();
       routerHandler();
       return;

@@ -1545,6 +1545,80 @@ tr:hover td {
    ============================================================ */
 
 
+/* --- Wallet Button (Role-Aware) --- */
+.wallet-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    border: 1px solid var(--c-border);
+    padding: 6px 14px;
+    border-radius: 999px;
+    transition: all var(--t-fast);
+    cursor: pointer;
+}
+.wallet-disconnected {
+    background: var(--c-bg);
+    color: var(--c-text-secondary);
+}
+.wallet-disconnected:hover {
+    background: var(--c-accent-light);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+}
+.wallet-connected {
+    background: var(--c-surface);
+    color: var(--c-text);
+    border-color: var(--c-border);
+}
+.wallet-role-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: wallet-pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes wallet-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+    50%      { opacity: 0.7; box-shadow: 0 0 0 4px rgba(124,58,237,0.2); }
+}
+.wallet-label { font-size: 12px; }
+.wallet-icon  { font-size: 14px; }
+
+/* --- Role Access Banners --- */
+.role-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: var(--r-md);
+    flex-wrap: wrap;
+}
+.role-banner-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.role-banner-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.role-banner-consumer {
+    background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+    border: 1px solid var(--c-border);
+    color: var(--c-text-secondary);
+}
+.role-banner-elevated {
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+    border: 1px solid #86EFAC;
+    color: #065F46;
+}
+
 /* --- Verify Tabs --- */
 .verify-tabs {
     display: flex;
