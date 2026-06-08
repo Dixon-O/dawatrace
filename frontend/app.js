@@ -97,15 +97,131 @@ var Utils = {
     setTimeout(function() { t.classList.add('toast-exit'); setTimeout(function() { t.remove(); }, 300); }, 4000);
   },
   parseGS1: function(raw) {
-    var data = raw.replace(/^\]d2/, '');
+    var data = raw.trim();
+
+    // Strip AIM symbology identifiers (]d2=DataMatrix, ]C1=Code128, ]e0=EAN, ]Q3=QR-GS1)
+    data = data.replace(/^\](?:d[0-2]|C[01]|e[0-4]|Q[0-6])/, '');
+
+    // AI fixed lengths per GS1 General Specification (key pharma AIs)
+    // Positive = fixed length, -1 = variable (terminated by GS or end-of-data)
+    var AI_LEN = {
+      '00':18, '01':14, '02':14, '10':-1, '11':6, '12':6, '13':6,
+      '15':6, '17':6, '20':2, '21':-1, '22':-1, '30':-1, '37':-1,
+      '240':-1, '241':-1, '242':-1, '250':-1, '251':-1,
+      '253':-1, '254':-1, '255':-1,
+      '310':6, '311':6, '320':6, '321':6,
+      '400':-1, '410':13, '411':13, '412':13, '414':13,
+      '710':-1, '711':-1, '712':-1, '713':-1, '714':-1
+    };
+    var AI_KEY = {
+      '01':'gtin','02':'content','10':'lot','11':'prodDate',
+      '13':'packDate','15':'bestBefore','17':'expiry',
+      '21':'serial','30':'count','37':'units',
+      '240':'additionalId','710':'nhrn','711':'nhrn','712':'nhrn','713':'nhrn','714':'nhrn'
+    };
+
     var result = {};
-    var m;
-    m = data.match(/01(\d{14})/); if (m) result.gtin = m[1];
-    m = data.match(/17(\d{6})/); if (m) result.expiry = m[1];
-    m = data.match(/10([^\x1D]+)/); if (m) result.lot = m[1].replace(/21.*$/, '');
-    m = data.match(/21([^\x1D]+)/); if (m) result.serial = m[1];
+
+    // Path A: Human-Readable Interpretation format — (AI)value(AI)value
+    if (/\(\d{2,4}\)/.test(data)) {
+      var hri = /\((\d{2,4})\)([^(]*)/g, hm;
+      while ((hm = hri.exec(data)) !== null) {
+        var hKey = AI_KEY[hm[1]];
+        if (hKey) result[hKey] = hm[2].trim();
+      }
+      return result;
+    }
+
+    // Path B: Raw scanner output — normalize all GS separator representations
+    // ASCII 29 (Group Separator), Unicode representations, and visible symbol ␝
+    data = data.replace(/[\x1D\u001D\u241D]/g, '\x1D');
+    // Some scanners use <GS> text
+    data = data.replace(/<GS>/gi, '\x1D');
+
+    // Parse using AI length table
+    var pos = 0;
+    var maxIter = 200; // safety
+    while (pos < data.length && maxIter-- > 0) {
+      // Skip GS separators
+      if (data.charAt(pos) === '\x1D') { pos++; continue; }
+
+      // Try to match an AI: 4-digit first, then 3, then 2
+      var matched = false;
+      for (var aiLen = 4; aiLen >= 2; aiLen--) {
+        if (pos + aiLen > data.length) continue;
+        var ai = data.substring(pos, pos + aiLen);
+        if (AI_LEN.hasOwnProperty(ai)) {
+          var fixedLen = AI_LEN[ai];
+          pos += aiLen;
+          var val;
+          if (fixedLen > 0) {
+            // Fixed-length: read exactly fixedLen characters
+            val = data.substring(pos, pos + fixedLen);
+            pos += fixedLen;
+          } else {
+            // Variable-length: read until next GS or end
+            var gsIdx = data.indexOf('\x1D', pos);
+            if (gsIdx === -1) gsIdx = data.length;
+            val = data.substring(pos, gsIdx);
+            pos = gsIdx; // GS will be skipped on next iteration
+          }
+          var key = AI_KEY[ai];
+          if (key) result[key] = val;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        // Unknown AI — try to skip to next GS or end
+        var nextGS = data.indexOf('\x1D', pos);
+        pos = nextGS === -1 ? data.length : nextGS;
+      }
+    }
     return result;
   },
+  // GS1 Modulo-10 check digit validation
+  validateGTIN: function(gtin) {
+    if (!gtin || !/^\d{8,14}$/.test(gtin)) return false;
+    // Pad to 14 digits
+    var padded = gtin.padStart(14, '0');
+    var sum = 0;
+    for (var i = 0; i < 13; i++) {
+      sum += parseInt(padded[i]) * (i % 2 === 0 ? 3 : 1);
+    }
+    var checkDigit = (10 - (sum % 10)) % 10;
+    return checkDigit === parseInt(padded[13]);
+  },
+  // Convert GTIN-14 to NDC for OpenFDA lookup
+  // US pharma UPC structure: prefix '3' + 10-digit NDC + check
+  gtinToNdc: function(gtin) {
+    if (!gtin || gtin.length < 12) return null;
+    // Normalize to 14 digits
+    var g14 = gtin.padStart(14, '0');
+    // Strip indicator digit (pos 0) and check digit (pos 13) → 12-digit UPC-A
+    var upc = g14.substring(1, 13);
+    // US drug UPCs start with '3' (National Drug Code)
+    if (upc.charAt(0) === '3') {
+      var ndc10 = upc.substring(1, 11); // 10-digit NDC
+      // Return multiple format attempts for OpenFDA search
+      return {
+        ndc10: ndc10,
+        // Try common NDC segmentations
+        formats: [
+          ndc10.substring(0,5) + '-' + ndc10.substring(5,9),   // 5-4 product_ndc
+          ndc10.substring(0,4) + '-' + ndc10.substring(4,8),   // 4-4 product_ndc
+          ndc10.substring(0,5) + '-' + ndc10.substring(5,8),   // 5-3 product_ndc
+        ],
+        packageFormats: [
+          ndc10.substring(0,5) + '-' + ndc10.substring(5,9) + '-' + ndc10.substring(9),  // 5-4-1
+          ndc10.substring(0,4) + '-' + ndc10.substring(4,8) + '-' + ndc10.substring(8),  // 4-4-2
+          ndc10.substring(0,5) + '-' + ndc10.substring(5,8) + '-' + ndc10.substring(8),  // 5-3-2
+        ]
+      };
+    }
+    // Non-US barcode — return the raw digits
+    return { ndc10: null, formats: [], packageFormats: [], raw: upc };
+  },
+
   statusColor: function(s) {
     var map = { GENUINE: 'var(--c-success)', EXPIRED: 'var(--c-warning)', RECALLED: 'var(--c-danger)', SUSPICIOUS: '#F97316', COUNTERFEIT: 'var(--c-danger)', NOT_FOUND: 'var(--c-text-secondary)' };
     return map[s] || 'var(--c-text-secondary)';
@@ -347,10 +463,48 @@ var GlobalLookup = {
 
   queryOpenFDA: async function(query) {
     var url;
-    if (/^\d{10,14}$/.test(query)) {
-      var ndc = query.length === 14 ? query.substring(3,7) + '-' + query.substring(7,11) : query;
-      url = 'https://api.fda.gov/drug/ndc.json?search=product_ndc:"' + ndc + '"&limit=1';
+    var isGTIN = /^\d{12,14}$/.test(query);
+    var isNDC = /^\d{4,5}-\d{3,4}/.test(query) || /^\d{9,11}$/.test(query);
+
+    if (isGTIN) {
+      // Convert GTIN to NDC using proper GS1 structure
+      var ndcInfo = Utils.gtinToNdc(query);
+      if (ndcInfo && ndcInfo.formats.length > 0) {
+        // Try each NDC format against OpenFDA
+        for (var i = 0; i < ndcInfo.formats.length; i++) {
+          try {
+            url = 'https://api.fda.gov/drug/ndc.json?search=product_ndc:"' + ndcInfo.formats[i] + '"&limit=1';
+            var res = await fetch(url);
+            if (res.ok) {
+              var data = await res.json();
+              if (data.results && data.results.length > 0) {
+                var r = data.results[0];
+                return {
+                  productName: (r.brand_name || r.generic_name || 'Unknown') + ' ' + (r.dosage_form || ''),
+                  genericName: r.generic_name || '',
+                  manufacturer: r.labeler_name || 'Unknown',
+                  ndc: r.product_ndc || '',
+                  dosageForm: r.dosage_form || '',
+                  route: (r.route || [''])[0]
+                };
+              }
+            }
+          } catch(e) { /* try next format */ }
+        }
+      }
+      return null; // No match for this GTIN
+    }
+
+    if (isNDC) {
+      // Direct NDC search — format with dashes if needed
+      var ndcQuery = query;
+      if (/^\d{9,11}$/.test(query)) {
+        // Bare digits — try 5-4 format
+        ndcQuery = query.substring(0,5) + '-' + query.substring(5,9);
+      }
+      url = 'https://api.fda.gov/drug/ndc.json?search=product_ndc:"' + ndcQuery + '"&limit=1';
     } else {
+      // Brand name search
       url = 'https://api.fda.gov/drug/ndc.json?search=brand_name:"' + encodeURIComponent(query) + '"&limit=1';
     }
     var res = await fetch(url);
@@ -1618,15 +1772,26 @@ var UI = {
   handleScanResult: function(decodedText, result) {
     var query = decodedText.trim();
     var formatName = result && result.result && result.result.format ? result.result.format.formatName : 'Unknown';
-    Utils.showToast('Scanned (' + formatName + '): ' + query, 'success');
+    Utils.showToast('Scanned (' + formatName + '): ' + query.substring(0, 40) + (query.length > 40 ? '...' : ''), 'success');
 
     // Parse based on format
     if (query.startsWith('DawaTrace:')) {
       query = query.replace('DawaTrace:', '');
-    } else if (query.startsWith(']d2') || query.match(/^01\d{14}/)) {
+    } else {
+      // Try GS1 parsing for DataMatrix, Code128, QR-GS1, or raw AI data
       var gs1 = Utils.parseGS1(query);
-      if (gs1.serial) query = gs1.serial;
-      else if (gs1.gtin) query = gs1.gtin;
+      if (gs1.gtin || gs1.serial || gs1.lot) {
+        // Store parsed GS1 metadata for the verify flow
+        window._lastGS1 = gs1;
+        // GTIN is always the primary lookup key (identifies the PRODUCT)
+        // Serial is unit-unique and won't match global databases
+        if (gs1.gtin) {
+          query = gs1.gtin;
+          Utils.showToast('GS1: GTIN ' + gs1.gtin + (gs1.lot ? ' | Lot: ' + gs1.lot : '') + (gs1.serial ? ' | S/N: ' + gs1.serial : ''), 'info');
+        } else if (gs1.serial) {
+          query = gs1.serial;
+        }
+      }
     }
 
     document.getElementById('app').innerHTML = Renderers.verify();
@@ -1653,7 +1818,17 @@ var UI = {
     UI.html5Qrcode.scanFile(file, true)
       .then(function(decodedText) {
         var query = decodedText.trim();
-        if (query.startsWith('DawaTrace:')) query = query.replace('DawaTrace:', '');
+        // Apply GS1 parsing (same logic as camera scan)
+        if (query.startsWith('DawaTrace:')) {
+          query = query.replace('DawaTrace:', '');
+        } else {
+          var gs1 = Utils.parseGS1(query);
+          if (gs1.gtin || gs1.serial || gs1.lot) {
+            window._lastGS1 = gs1;
+            if (gs1.gtin) query = gs1.gtin;
+            else if (gs1.serial) query = gs1.serial;
+          }
+        }
         UI.switchVerifyTab('manual');
         document.getElementById('batch-input').value = query;
         BlockchainService.verifyProduct();
@@ -1732,13 +1907,21 @@ var UI = {
     document.getElementById('modal-overlay').classList.add('active');
   },
 
-  showQRModal: function(serial, gtin) {
-    var payload = 'DawaTrace:' + serial;
+  showQRModal: function(serial, gtin, lot, expiry) {
+    // Generate GS1-compliant payload: AI(01)GTIN + AI(21)Serial [+ AI(10)Lot + AI(17)Expiry]
+    var gs1Payload = '';
+    if (gtin) gs1Payload += '01' + gtin.padStart(14, '0');
+    if (serial) gs1Payload += '21' + serial;
+    if (lot) gs1Payload += String.fromCharCode(29) + '10' + lot; // GS before variable-length after variable
+    if (expiry) gs1Payload += '17' + expiry;
+    // Fallback to DawaTrace format if no GTIN
+    var payload = gs1Payload || ('DawaTrace:' + serial);
+    var displayLabel = gtin ? 'GS1: (01)' + gtin + ' (21)' + serial : serial;
     var html = '<div class="modal-header"><h3>Product QR Code</h3><button class="modal-close" onclick="UI.hideModal()">×</button></div>' +
       '<div class="qr-display mb-md text-center">' +
         '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(payload) + '" alt="QR" style="border-radius:8px">' +
-        '<div class="text-mono text-sm mt-sm">' + serial + '</div>' +
-        (gtin ? '<div class="text-xs text-secondary">GTIN: ' + gtin + '</div>' : '') +
+        '<div class="text-mono text-sm mt-sm">' + displayLabel + '</div>' +
+        (lot ? '<div class="text-xs text-secondary">Lot: ' + lot + '</div>' : '') +
       '</div>' +
       '<p style="text-align:center" class="text-sm text-secondary mb-md">Print this QR on packaging for consumer verification.</p>';
     document.getElementById('modal-content').innerHTML = html;
@@ -1859,25 +2042,42 @@ var BlockchainService = {
 
     // --- DEMO MODE ---
     if (demoMode) {
+      // Retrieve GS1 metadata if a barcode was scanned
+      var gs1Meta = window._lastGS1 || {};
+      window._lastGS1 = null; // consume once
+
       // Search by serial, then GTIN, then product name
       var product = DEMO_DB.products.find(function(p) {
         return p.serialNumber === query || p.gtin === query || p.productName.toLowerCase().includes(query.toLowerCase());
       });
+      // Also try matching by GS1 serial if GTIN was used as query
+      if (!product && gs1Meta.serial) {
+        product = DEMO_DB.products.find(function(p) { return p.serialNumber === gs1Meta.serial; });
+      }
 
       if (product) {
+        // Enrich with GS1 barcode data if available
+        var expiryTs = product.expiryDate;
+        if (gs1Meta.expiry && !expiryTs) {
+          // Parse YYMMDD → timestamp
+          var ey = parseInt('20' + gs1Meta.expiry.substring(0,2));
+          var em = parseInt(gs1Meta.expiry.substring(2,4)) - 1;
+          var ed = parseInt(gs1Meta.expiry.substring(4,6)) || 28;
+          expiryTs = new Date(ey, em, ed).getTime() / 1000;
+        }
         var riskResult = RiskEngine.score({
           exists: product.exists !== false,
           isRecalled: product.isRecalled,
-          isExpired: product.expiryDate < (Date.now() / 1000),
+          isExpired: expiryTs < (Date.now() / 1000),
           scanCount: product.scanCount || 0,
           custodyCount: product.supplyChain ? product.supplyChain.length : 0,
           recallReason: product.recallReason,
-          expiryDate: product.expiryDate,
+          expiryDate: expiryTs,
           productName: product.productName,
           manufacturer: product.manufacturer,
           gtin: product.gtin,
-          serialNumber: product.serialNumber,
-          lotNumber: product.lotNumber,
+          serialNumber: gs1Meta.serial || product.serialNumber,
+          lotNumber: gs1Meta.lot || product.lotNumber,
           manufactureDate: product.manufactureDate,
           supplyChain: product.supplyChain
         });
@@ -1894,9 +2094,9 @@ var BlockchainService = {
             exists: true,
             productName: globalResult.productName || 'Unknown Product',
             manufacturer: globalResult.manufacturer || '—',
-            gtin: /^\d{8,14}$/.test(query) ? query : '—',
-            serialNumber: '—',
-            lotNumber: '—',
+            gtin: /^\d{8,14}$/.test(query) ? query : (gs1Meta.gtin || '—'),
+            serialNumber: gs1Meta.serial || '—',
+            lotNumber: gs1Meta.lot || '—',
             manufactureDate: 0,
             expiryDate: 0,
             custodyCount: 0,
@@ -1914,6 +2114,14 @@ var BlockchainService = {
             kenyaVerified: globalResult.kenyaVerified || false,
             sourceCountry: globalResult.country
           };
+          // Use barcode expiry if available
+          if (gs1Meta.expiry) {
+            var gey = parseInt('20' + gs1Meta.expiry.substring(0,2));
+            var gem = parseInt(gs1Meta.expiry.substring(2,4)) - 1;
+            var ged = parseInt(gs1Meta.expiry.substring(4,6)) || 28;
+            untracked.expiryDate = new Date(gey, gem, ged).getTime() / 1000;
+            untracked.isExpired = untracked.expiryDate < (Date.now() / 1000);
+          }
           var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
           UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
           return;
