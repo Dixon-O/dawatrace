@@ -1794,35 +1794,93 @@ var UI = {
     }
   },
 
-  handleScanResult: function(decodedText, result) {
-    var query = decodedText.trim();
-    var formatName = result && result.result && result.result.format ? result.result.format.formatName : 'Unknown';
-    Utils.showToast('Scanned (' + formatName + '): ' + query.substring(0, 40) + (query.length > 40 ? '...' : ''), 'success');
-
-    // Parse based on format
+  // Shared GS1 decode logic for both camera and image scans
+  _decodeScanQuery: function(rawText) {
+    var query = rawText.trim();
+    var gs1 = null;
     if (query.startsWith('DawaTrace:')) {
       query = query.replace('DawaTrace:', '');
     } else {
-      // Try GS1 parsing for DataMatrix, Code128, QR-GS1, or raw AI data
-      var gs1 = Utils.parseGS1(query);
+      gs1 = Utils.parseGS1(query);
       if (gs1.gtin || gs1.serial || gs1.lot) {
-        // Store parsed GS1 metadata for the verify flow
         window._lastGS1 = gs1;
-        // GTIN is always the primary lookup key (identifies the PRODUCT)
-        // Serial is unit-unique and won't match global databases
-        if (gs1.gtin) {
-          query = gs1.gtin;
-          Utils.showToast('GS1: GTIN ' + gs1.gtin + (gs1.lot ? ' | Lot: ' + gs1.lot : '') + (gs1.serial ? ' | S/N: ' + gs1.serial : ''), 'info');
-        } else if (gs1.serial) {
-          query = gs1.serial;
-        }
+        if (gs1.gtin) query = gs1.gtin;
+        else if (gs1.serial) query = gs1.serial;
+      } else {
+        gs1 = null;
       }
     }
+    return { query: query, gs1: gs1 };
+  },
 
-    document.getElementById('app').innerHTML = Renderers.verify();
-    UI.switchVerifyTab('manual');
-    document.getElementById('batch-input').value = query;
-    BlockchainService.verifyProduct();
+  // Show a rich "Analyzing" interstitial and then run verification
+  _showScanReport: function(query, gs1, formatName) {
+    // Build scan summary details
+    var scanInfoItems = '';
+    if (formatName) scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Format</span><span>' + formatName + '</span></div>';
+    if (gs1 && gs1.gtin) {
+      scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">GTIN</span><span class="text-mono">' + gs1.gtin + '</span></div>';
+      var valid = Utils.validateGTIN(gs1.gtin);
+      scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Check Digit</span><span>' + (valid ? '✅ Valid' : '❌ Invalid') + '</span></div>';
+    }
+    if (gs1 && gs1.lot) scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Lot/Batch</span><span class="text-mono">' + gs1.lot + '</span></div>';
+    if (gs1 && gs1.serial) scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Serial</span><span class="text-mono">' + gs1.serial + '</span></div>';
+    if (gs1 && gs1.expiry) {
+      var ey = '20' + gs1.expiry.substring(0,2), em = gs1.expiry.substring(2,4), ed = gs1.expiry.substring(4,6) || '28';
+      scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Expiry</span><span>' + ey + '-' + em + '-' + ed + '</span></div>';
+    }
+    if (!gs1) scanInfoItems += '<div class="scan-info-item"><span class="scan-info-label">Query</span><span class="text-mono">' + query.substring(0, 40) + '</span></div>';
+
+    // Render analyzing screen with scan details
+    document.getElementById('app').innerHTML =
+      '<div class="container mt-xl">' +
+        '<div class="card" style="text-align:center;padding:40px 24px;max-width:520px;margin:0 auto">' +
+          '<div class="scan-analyzing">' +
+            '<div class="scan-pulse-ring"></div>' +
+            '<div class="scan-icon-wrap"><span style="font-size:48px">🔬</span></div>' +
+          '</div>' +
+          '<h2 style="margin:20px 0 8px">Scan Captured</h2>' +
+          '<p class="text-secondary" style="margin-bottom:20px">Verifying against local database, FDA, RxNorm, and global registries...</p>' +
+          (scanInfoItems ? '<div class="scan-info-grid" style="text-align:left;background:var(--c-surface);border-radius:12px;padding:16px;margin-bottom:16px">' + scanInfoItems + '</div>' : '') +
+          '<div class="scan-progress-bar"><div class="scan-progress-fill"></div></div>' +
+          '<p class="text-xs text-secondary" style="margin-top:12px" id="scan-status-text">Checking local database...</p>' +
+        '</div>' +
+      '</div>';
+
+    // Animate status text
+    var statuses = ['Checking local database...', 'Querying OpenFDA...', 'Checking RxNorm...', 'Analyzing risk signals...', 'Generating report...'];
+    var si = 0;
+    var statusInterval = setInterval(function() {
+      si++;
+      var el = document.getElementById('scan-status-text');
+      if (el && si < statuses.length) el.textContent = statuses[si];
+      else clearInterval(statusInterval);
+    }, 600);
+
+    // Run verification (needs batch-input for verifyProduct)
+    // We create a hidden input so verifyProduct can read it
+    var hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden'; hiddenInput.id = 'batch-input'; hiddenInput.value = query;
+    document.body.appendChild(hiddenInput);
+
+    // Delay slightly so the user sees the scan summary
+    setTimeout(function() {
+      clearInterval(statusInterval);
+      // Remove hidden input after verifyProduct reads it
+      BlockchainService.verifyProduct().then(function() {
+        var hi = document.getElementById('batch-input');
+        if (hi && hi.type === 'hidden') hi.remove();
+      }).catch(function() {
+        var hi = document.getElementById('batch-input');
+        if (hi && hi.type === 'hidden') hi.remove();
+      });
+    }, 1200);
+  },
+
+  handleScanResult: function(decodedText, result) {
+    var formatName = result && result.result && result.result.format ? result.result.format.formatName : 'Unknown';
+    var decoded = UI._decodeScanQuery(decodedText);
+    UI._showScanReport(decoded.query, decoded.gs1, formatName);
   },
 
   scanUploadedImage: function(e) {
@@ -1842,22 +1900,8 @@ var UI = {
     Utils.showToast('Analyzing image...', 'info');
     UI.html5Qrcode.scanFile(file, true)
       .then(function(decodedText) {
-        var query = decodedText.trim();
-        // Apply GS1 parsing (same logic as camera scan)
-        if (query.startsWith('DawaTrace:')) {
-          query = query.replace('DawaTrace:', '');
-        } else {
-          var gs1 = Utils.parseGS1(query);
-          if (gs1.gtin || gs1.serial || gs1.lot) {
-            window._lastGS1 = gs1;
-            if (gs1.gtin) query = gs1.gtin;
-            else if (gs1.serial) query = gs1.serial;
-          }
-        }
-        UI.switchVerifyTab('manual');
-        document.getElementById('batch-input').value = query;
-        BlockchainService.verifyProduct();
-        Utils.showToast('Image decoded: ' + query, 'success');
+        var decoded = UI._decodeScanQuery(decodedText);
+        UI._showScanReport(decoded.query, decoded.gs1, 'Image Upload');
       })
       .catch(function(err) {
         console.log('Image scan err:', err);
