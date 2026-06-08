@@ -192,20 +192,29 @@ var Utils = {
     return checkDigit === parseInt(padded[13]);
   },
   // Convert GTIN-14 to NDC for OpenFDA lookup
-  // US pharma UPC structure: prefix '3' + 10-digit NDC + check
+  // GTIN-14 structure: indicator(1) + UPC-12(12) + check(1)
+  // US drug UPC-A: GS1-prefix '0' + NSC '3' + 10-digit NDC + check
+  // So in GTIN-14: pos0=indicator, pos1='0', pos2='3', pos3-12=NDC, pos13=check
   gtinToNdc: function(gtin) {
     if (!gtin || gtin.length < 12) return null;
     // Normalize to 14 digits
     var g14 = gtin.padStart(14, '0');
     // Strip indicator digit (pos 0) and check digit (pos 13) → 12-digit UPC-A
     var upc = g14.substring(1, 13);
-    // US drug UPCs start with '3' (National Drug Code)
-    if (upc.charAt(0) === '3') {
-      var ndc10 = upc.substring(1, 11); // 10-digit NDC
-      // Return multiple format attempts for OpenFDA search
+
+    // US drug UPC: starts with '03' (GS1 prefix '0' + Number System Char '3')
+    // Also handle '30' prefix (some older UPCs) and direct '3' at pos 0
+    var ndc10 = null;
+    if (upc.substring(0, 2) === '03') {
+      ndc10 = upc.substring(2, 12); // after '03', next 10 digits = NDC
+    } else if (upc.charAt(0) === '3') {
+      ndc10 = upc.substring(1, 11); // after '3', next 10 digits = NDC
+    }
+
+    if (ndc10) {
       return {
         ndc10: ndc10,
-        // Try common NDC segmentations
+        // Try common NDC segmentations for product_ndc
         formats: [
           ndc10.substring(0,5) + '-' + ndc10.substring(5,9),   // 5-4 product_ndc
           ndc10.substring(0,4) + '-' + ndc10.substring(4,8),   // 4-4 product_ndc
@@ -218,7 +227,23 @@ var Utils = {
         ]
       };
     }
-    // Non-US barcode — return the raw digits
+
+    // Non-US or unrecognized prefix — try treating entire middle as potential NDC
+    // Strip leading zeros and attempt formats anyway
+    var mid = upc.replace(/^0+/, '');
+    if (mid.length >= 9) {
+      return {
+        ndc10: mid.substring(0, 10),
+        formats: [
+          mid.substring(0,5) + '-' + mid.substring(5,9),
+          mid.substring(0,4) + '-' + mid.substring(4,8),
+        ],
+        packageFormats: [],
+        raw: upc
+      };
+    }
+
+    // Non-US barcode
     return { ndc10: null, formats: [], packageFormats: [], raw: upc };
   },
 
