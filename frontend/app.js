@@ -1311,28 +1311,41 @@ var RBAC = {
     }
   },
 
+  _grantDemoAdmin: function(orgType, existingAdmin) {
+    var demoAddr = '0xDemo' + Date.now().toString(16);
+    currentRole = 'ADMIN';
+    currentOrgType = orgType;
+    currentOrgName = orgType + ' Organization';
+    isConnected = false;
+    demoMode = true;
+    var adminRecord = { wallet: demoAddr, orgType: orgType, orgName: currentOrgName, createdAt: Date.now() };
+    localStorage.setItem('dawatrace_admin', JSON.stringify(adminRecord));
+    localStorage.setItem('dawatrace_session', JSON.stringify({ wallet: demoAddr, role: 'ADMIN', orgType: orgType, orgName: currentOrgName }));
+    RBAC.updateAllUI();
+    Utils.showToast('Admin access granted (Demo Mode) — ' + orgType, 'success');
+    navigate('/dashboard');
+  },
+
   connectAsAdmin: async function(orgType, existingAdmin) {
     // Try connecting wallet
     if (!window.ethereum) {
       for (var i = 0; i < 30; i++) { await Utils.delay(100); if (window.ethereum) break; }
     }
     if (!window.ethereum) {
-      // Demo mode — grant admin locally
-      var demoAddr = '0xDemo' + Date.now().toString(16);
-      if (existingAdmin && existingAdmin.wallet !== demoAddr) {
-        // In demo mode, allow re-entry as admin
+      // On mobile: show wallet selection modal first, let user choose a wallet app
+      if (typeof WalletBridge !== 'undefined' && WalletBridge.isMobile()) {
+        WalletBridge.showWalletModal(function(method) {
+          if (method === 'demo') {
+            // Fall through to demo admin grant
+            RBAC._grantDemoAdmin(orgType, existingAdmin);
+          } else if (method === 'injected') {
+            RBAC.connectAsAdmin(orgType, existingAdmin);
+          }
+        });
+        return;
       }
-      currentRole = 'ADMIN';
-      currentOrgType = orgType;
-      currentOrgName = orgType + ' Organization';
-      isConnected = false;
-      demoMode = true;
-      var adminRecord = { wallet: demoAddr, orgType: orgType, orgName: currentOrgName, createdAt: Date.now() };
-      localStorage.setItem('dawatrace_admin', JSON.stringify(adminRecord));
-      localStorage.setItem('dawatrace_session', JSON.stringify({ wallet: demoAddr, role: 'ADMIN', orgType: orgType, orgName: currentOrgName }));
-      RBAC.updateAllUI();
-      Utils.showToast('Admin access granted (Demo Mode) — ' + orgType, 'success');
-      navigate('/dashboard');
+      // Desktop without wallet or no WalletBridge — grant demo admin
+      RBAC._grantDemoAdmin(orgType, existingAdmin);
       return;
     }
 
@@ -2062,7 +2075,23 @@ var BlockchainService = {
     if (!window.ethereum) {
       for (var i = 0; i < 30; i++) { await Utils.delay(100); if (window.ethereum) break; }
     }
-    if (!window.ethereum) { Utils.showToast('No Web3 wallet detected. Install MetaMask or use a wallet browser.', 'warning'); return; }
+    if (!window.ethereum) {
+      // Show wallet selection modal instead of error
+      if (typeof WalletBridge !== 'undefined') {
+        WalletBridge.showWalletModal(function(method) {
+          if (method === 'injected') {
+            BlockchainService.connectWallet();
+          } else if (method === 'demo') {
+            demoMode = true; isConnected = false;
+            Utils.showToast('Continuing in Demo Mode', 'info');
+            routerHandler();
+          }
+        });
+        return;
+      }
+      Utils.showToast('No Web3 wallet detected. Install MetaMask or use a wallet browser.', 'warning');
+      return;
+    }
 
     try {
       try {
