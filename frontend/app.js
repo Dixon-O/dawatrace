@@ -107,11 +107,11 @@ var Utils = {
     return result;
   },
   statusColor: function(s) {
-    var map = { GENUINE: 'var(--c-success)', EXPIRED: 'var(--c-warning)', RECALLED: 'var(--c-danger)', SUSPICIOUS: '#F97316', COUNTERFEIT: 'var(--c-danger)' };
+    var map = { GENUINE: 'var(--c-success)', EXPIRED: 'var(--c-warning)', RECALLED: 'var(--c-danger)', SUSPICIOUS: '#F97316', COUNTERFEIT: 'var(--c-danger)', NOT_FOUND: 'var(--c-text-secondary)' };
     return map[s] || 'var(--c-text-secondary)';
   },
   statusIcon: function(s) {
-    var map = { GENUINE: '✅', EXPIRED: '⏰', RECALLED: '🚨', SUSPICIOUS: '⚠️', COUNTERFEIT: '❌', UNTRACKED: '🔍' };
+    var map = { GENUINE: '✅', EXPIRED: '⏰', RECALLED: '🚨', SUSPICIOUS: '⚠️', COUNTERFEIT: '❌', UNTRACKED: '🔍', NOT_FOUND: '❓' };
     return map[s] || '❓';
   },
   trustColor: function(score) {
@@ -129,7 +129,12 @@ window.navigate = function(path) { window.location.hash = path; };
 
 var RiskEngine = {
   score: function(product) {
-    if (!product || !product.exists) return { trust: 0, status: 'COUNTERFEIT', signals: ['Serial number not found in any registry — likely counterfeit'] };
+    if (!product || !product.exists) return { trust: 10, status: 'NOT_FOUND', signals: [
+      '❓ Product not found in any connected database',
+      '⚠️ This does not automatically mean the product is counterfeit',
+      'ℹ️ The product may be unregistered, new to market, or from a region not yet covered',
+      '🏥 Consult your pharmacist or contact the manufacturer to verify authenticity'
+    ] };
 
     var trust = 100;
     var signals = [];
@@ -1926,33 +1931,102 @@ var BlockchainService = {
     try {
       var productId = ethers.id(query);
       var result = await contract.verifyProductView(productId);
-      var liveProduct = {
-        exists: result.exists,
-        isAuthentic: result.isAuthentic,
-        isExpired: result.isExpired,
-        isRecalled: result.isRecalled,
-        productName: result.productName,
-        gtin: result.gtin,
-        serialNumber: result.serialNumber,
-        lotNumber: result.lotNumber,
-        manufacturer: result.manufacturer,
-        manufactureDate: result.manufactureDate,
-        expiryDate: result.expiryDate,
-        custodyCount: result.custodyCount,
-        scanCount: result.scanCount,
-        recallReason: result.recallReason,
-        status: result.status
-      };
-      var liveRisk = RiskEngine.score(liveProduct);
-      UI.renderWith(Renderers.result, liveProduct, query, liveRisk);
 
-      // Load live custody chain
+      if (result.exists) {
+        // Product found on blockchain — render with full provenance
+        var liveProduct = {
+          exists: result.exists,
+          isAuthentic: result.isAuthentic,
+          isExpired: result.isExpired,
+          isRecalled: result.isRecalled,
+          productName: result.productName,
+          gtin: result.gtin,
+          serialNumber: result.serialNumber,
+          lotNumber: result.lotNumber,
+          manufacturer: result.manufacturer,
+          manufactureDate: result.manufactureDate,
+          expiryDate: result.expiryDate,
+          custodyCount: result.custodyCount,
+          scanCount: result.scanCount,
+          recallReason: result.recallReason,
+          status: result.status
+        };
+        var liveRisk = RiskEngine.score(liveProduct);
+        UI.renderWith(Renderers.result, liveProduct, query, liveRisk);
+
+        // Load live custody chain
+        try {
+          var chain = await contract.getCustodyChain(productId);
+          BlockchainService.renderLiveCustodyTimeline(chain);
+        } catch(ce) { console.log('Custody chain error:', ce); }
+        return;
+      }
+
+      // Product NOT on blockchain — cascade to Global Lookup before giving up
+      Utils.showToast('Not on blockchain — searching Kenya import registries & global sources...', 'info');
       try {
-        var chain = await contract.getCustodyChain(productId);
-        BlockchainService.renderLiveCustodyTimeline(chain);
-      } catch(ce) { console.log('Custody chain error:', ce); }
+        var globalResult = await GlobalLookup.lookup(query);
+        if (globalResult && globalResult.found) {
+          var untracked = {
+            exists: true,
+            productName: globalResult.productName || 'Unknown Product',
+            manufacturer: globalResult.manufacturer || '—',
+            gtin: /^\d{8,14}$/.test(query) ? query : '—',
+            serialNumber: '—', lotNumber: '—',
+            manufactureDate: 0, expiryDate: 0,
+            custodyCount: 0, isRecalled: false, isExpired: false, scanCount: 0,
+            source: globalResult.source,
+            country: globalResult.country,
+            flag: globalResult.flag,
+            genericName: globalResult.genericName,
+            dosageForm: globalResult.dosageForm,
+            regulatoryBody: globalResult.regulatoryBody,
+            ndc: globalResult.ndc,
+            whoPrequalified: globalResult.whoPrequalified || false,
+            kenyaVerified: globalResult.kenyaVerified || false,
+            sourceCountry: globalResult.country
+          };
+          var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
+          UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
+          return;
+        }
+      } catch(ge) { console.log('Global lookup error (live):', ge); }
+
+      // Not found anywhere — show NOT_FOUND (not COUNTERFEIT)
+      var notFoundData = { exists: false };
+      var notFoundRisk = RiskEngine.score(notFoundData);
+      UI.renderWith(Renderers.result, notFoundData, query, notFoundRisk);
+
     } catch(err) {
       console.error('Verification error:', err);
+      // Network/contract error — still try Global Lookup
+      try {
+        var globalFallback = await GlobalLookup.lookup(query);
+        if (globalFallback && globalFallback.found) {
+          var fbData = {
+            exists: true,
+            productName: globalFallback.productName || 'Unknown Product',
+            manufacturer: globalFallback.manufacturer || '—',
+            gtin: /^\d{8,14}$/.test(query) ? query : '—',
+            serialNumber: '—', lotNumber: '—',
+            manufactureDate: 0, expiryDate: 0,
+            custodyCount: 0, isRecalled: false, isExpired: false, scanCount: 0,
+            source: globalFallback.source,
+            country: globalFallback.country,
+            flag: globalFallback.flag,
+            genericName: globalFallback.genericName,
+            dosageForm: globalFallback.dosageForm,
+            regulatoryBody: globalFallback.regulatoryBody,
+            ndc: globalFallback.ndc,
+            whoPrequalified: globalFallback.whoPrequalified || false,
+            kenyaVerified: globalFallback.kenyaVerified || false,
+            sourceCountry: globalFallback.country
+          };
+          var fbRisk = RiskEngine.scoreUntracked(globalFallback);
+          UI.renderWith(Renderers.result, fbData, query, fbRisk);
+          return;
+        }
+      } catch(ge2) { console.log('Global fallback error:', ge2); }
       var errData = { exists: false };
       var errRisk = RiskEngine.score(errData);
       UI.renderWith(Renderers.result, errData, query, errRisk);
