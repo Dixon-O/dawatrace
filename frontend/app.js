@@ -2135,14 +2135,36 @@ var BlockchainService = {
     var query = input ? input.value.trim() : '';
     if (!query) { Utils.showToast('Please enter a serial number or GTIN', 'error'); return; }
 
+    // --- GS1 PARSING for manual text input ---
+    // If the user typed/pasted a GS1 string, parse it and extract the GTIN
+    var gs1Meta = window._lastGS1 || null;
+    window._lastGS1 = null; // consume if set by scan handler
+
+    if (!gs1Meta) {
+      // Check if query looks like a GS1 string (HRI or raw AI format)
+      var looksGS1 = /\(\d{2,4}\)/.test(query) || /^\](?:d|C|e|Q)/.test(query) || /^01\d{14}/.test(query);
+      if (looksGS1) {
+        gs1Meta = Utils.parseGS1(query);
+        if (gs1Meta.gtin || gs1Meta.serial || gs1Meta.lot) {
+          // Use GTIN as primary lookup key
+          if (gs1Meta.gtin) {
+            query = gs1Meta.gtin;
+            if (input) input.value = query; // show the parsed GTIN in the field
+          } else if (gs1Meta.serial) {
+            query = gs1Meta.serial;
+          }
+        } else {
+          gs1Meta = null;
+        }
+      }
+    }
+    if (!gs1Meta) gs1Meta = {};
+
     document.getElementById('app').innerHTML = '<div class="verify-spinner container"><div class="spinner-ring"></div><h3>Analyzing product...</h3><p class="text-secondary text-mono">' + query + '</p></div>';
     await Utils.delay(800);
 
     // --- DEMO MODE ---
     if (demoMode) {
-      // Retrieve GS1 metadata if a barcode was scanned
-      var gs1Meta = window._lastGS1 || {};
-      window._lastGS1 = null; // consume once
 
       // Search by serial, then GTIN, then product name
       var product = DEMO_DB.products.find(function(p) {
