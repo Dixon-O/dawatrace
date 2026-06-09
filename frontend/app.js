@@ -22,6 +22,7 @@ const CONTRACT_ABI = [
   "function totalScans() view returns (uint256)",
   "function totalRecalls() view returns (uint256)",
   "function getProductIdAtIndex(uint256) view returns (bytes32)",
+  "function computeProductId(string,string) view returns (bytes32)",
   "function products(bytes32) view returns (string,string,string,string,string,address,uint256,uint256,bool,bool,string)",
   "function currentHolder(bytes32) view returns (address)",
   "function participants(address) view returns (string,string,bool,uint256)",
@@ -45,9 +46,10 @@ const CONTRACT_ABI = [
 
 var DEFAULT_CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 var HARDHAT_CHAIN_ID = '0x7A69';
+var deploymentConfig = null;
 
 // --- State ---
-var provider = null, signer = null, contract = null, contractAddress = null;
+var provider = null, signer = null, contract = null, readContract = null, contractAddress = null;
 var isConnected = false, demoMode = true;
 var currentRole = 'CONSUMER';
 var currentOrgName = '';
@@ -76,6 +78,31 @@ function flagImgs(codes) {
 // ============================================================
 
 var Utils = {
+  escapeHtml: function(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+  escapeAttr: function(str) {
+    return Utils.escapeHtml(str).replace(/`/g, '&#96;');
+  },
+  computeProductId: function(gtin, serial) {
+    if (!gtin || !serial || typeof ethers === 'undefined') return null;
+    return ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['string', 'string'], [gtin, serial]));
+  },
+  resolveProductIdentity: function(query, gs1Meta) {
+    gs1Meta = gs1Meta || {};
+    var gtin = gs1Meta.gtin || null;
+    var serial = gs1Meta.serial || null;
+    if (!gtin && query && /^\d{8,14}$/.test(query)) gtin = query;
+    if (!serial && query && !/^\d{8,14}$/.test(query)) serial = query;
+    var productId = (gtin && serial) ? Utils.computeProductId(gtin, serial) : null;
+    return { gtin: gtin, serial: serial, productId: productId, lookupKey: query };
+  },
   formatDate: function(ts) {
     if (!ts) return '—';
     var d = new Date(Number(ts) * 1000);
@@ -92,7 +119,7 @@ var Utils = {
     var t = document.createElement('div');
     t.className = 'toast toast-' + (type || 'info');
     var icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
-    t.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span><span>' + msg + '</span>';
+    t.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span><span>' + Utils.escapeHtml(msg) + '</span>';
     c.appendChild(t);
     setTimeout(function() { t.classList.add('toast-exit'); setTimeout(function() { t.remove(); }, 300); }, 4000);
   },
@@ -228,22 +255,7 @@ var Utils = {
       };
     }
 
-    // Non-US or unrecognized prefix — try treating entire middle as potential NDC
-    // Strip leading zeros and attempt formats anyway
-    var mid = upc.replace(/^0+/, '');
-    if (mid.length >= 9) {
-      return {
-        ndc10: mid.substring(0, 10),
-        formats: [
-          mid.substring(0,5) + '-' + mid.substring(5,9),
-          mid.substring(0,4) + '-' + mid.substring(4,8),
-        ],
-        packageFormats: [],
-        raw: upc
-      };
-    }
-
-    // Non-US barcode
+    // Non-US barcode — do not guess NDC (avoids false OpenFDA matches)
     return { ndc10: null, formats: [], packageFormats: [], raw: upc };
   },
 
@@ -288,25 +300,19 @@ var RiskEngine = {
       trust -= 60;
       signals.push('⏰ Product expired on ' + Utils.formatDate(product.expiryDate));
     }
-    var scans = Number(product.scanCount || 0);
-    if (scans > 10) {
-      trust -= Math.min(40, scans * 2);
-      signals.push('📡 Scanned ' + scans + ' times — possible cloned identifier');
-    } else if (scans > 5) {
-      trust -= 10;
-      signals.push('📡 Scanned ' + scans + ' times — monitor for duplication');
-    }
     var custody = Number(product.custodyCount || 0);
     if (custody === 0) {
-      trust -= 20;
-      signals.push('🔗 No supply chain events recorded');
+      trust -= 15;
+      signals.push('🔗 No on-chain supply chain events recorded');
     } else if (custody < 3) {
       trust -= 5;
-      signals.push('🔗 Incomplete supply chain (' + custody + ' events)');
+      signals.push('🔗 Partial supply chain (' + custody + ' events)');
     } else {
-      signals.push('🔗 Full supply chain verified (' + custody + ' events)');
+      signals.push('🔗 Supply chain recorded (' + custody + ' events)');
     }
-    if (trust >= 80 && !product.isRecalled && !product.isExpired) signals.unshift('✅ Cryptographic signature valid');
+    if (product.onChainVerified) {
+      signals.unshift('✅ Registered on DawaTrace blockchain');
+    }
 
     trust = Math.max(0, Math.min(100, trust));
     var status;
@@ -329,7 +335,7 @@ var RiskEngine = {
 
     if (lookupResult.apiVerified) {
       trust = 50;
-      signals.push(flag + ' Product verified via ' + src + ' — confirmed real product');
+      signals.push(flag + ' Product type found in ' + src + ' — confirms NDC/drug exists, not this package');
     } else if (lookupResult.kenyaVerified && lookupResult.whoPrequalified) {
       trust = 65;
       signals.push('✅ WHO Prequalified medicine — meets international quality standards');
@@ -640,6 +646,473 @@ var GlobalLookup = {
     var eu = ['France','Germany','Italy','Spain','Netherlands','Belgium','Austria','Sweden','Denmark','Finland','Ireland','Portugal','Greece','Poland','Romania','Czech Republic','Hungary','Bulgaria','Croatia','Slovenia','Slovakia','Estonia','Latvia','Lithuania','Malta','Cyprus','Luxembourg'];
     for (var i = 0; i < eu.length; i++) { if (country && country.indexOf(eu[i]) > -1) return 'EMA (European Medicines Agency) + National Authority'; }
     return null;
+  },
+
+  // --- FDA Drug Enforcement (Recalls) API ---
+  queryFDARecalls: async function(productName, ndc) {
+    try {
+      var searchTerms = [];
+      if (ndc) searchTerms.push('openfda.product_ndc:"' + ndc + '"');
+      if (productName) {
+        var clean = productName.replace(/\s*(tablet|capsule|powder|suspension|injection|cream|ointment|solution|oral|for)\s*/gi, '').trim();
+        if (clean) searchTerms.push('openfda.brand_name:"' + encodeURIComponent(clean.split(' ')[0]) + '"');
+      }
+      if (searchTerms.length === 0) return null;
+      var url = 'https://api.fda.gov/drug/enforcement.json?search=' + searchTerms.join('+OR+') + '&sort=report_date:desc&limit=3';
+      var res = await fetch(url);
+      if (!res.ok) return null;
+      var data = await res.json();
+      if (!data.results || data.results.length === 0) return { recalled: false, count: 0 };
+      var recalls = data.results.map(function(r) {
+        return {
+          classification: r.classification || '',
+          reason: r.reason_for_recall || '',
+          status: r.status || '',
+          date: r.recall_initiation_date || '',
+          firm: r.recalling_firm || '',
+          product: r.product_description || '',
+          voluntary: r.voluntary_mandated || ''
+        };
+      });
+      var activeRecalls = recalls.filter(function(r) { return r.status === 'Ongoing'; });
+      return {
+        recalled: activeRecalls.length > 0,
+        activeCount: activeRecalls.length,
+        totalCount: recalls.length,
+        recalls: recalls,
+        mostSevere: recalls[0] ? recalls[0].classification : ''
+      };
+    } catch(e) { console.log('FDA Recalls error:', e); return null; }
+  },
+
+  // --- FDA Adverse Events (FAERS) API ---
+  queryFDAAdverseEvents: async function(productName) {
+    if (!productName) return null;
+    try {
+      var clean = productName.replace(/\s*(tablet|capsule|powder|suspension|injection|cream|ointment|solution|oral|for)\s*/gi, '').trim().split(' ')[0];
+      if (!clean || clean.length < 3) return null;
+      var url = 'https://api.fda.gov/drug/event.json?search=patient.drug.openfda.brand_name:"' + encodeURIComponent(clean) + '"&count=serious';
+      var res = await fetch(url);
+      if (!res.ok) return null;
+      var data = await res.json();
+      if (!data.results) return { totalReports: 0, seriousCount: 0 };
+      var seriousCount = 0, nonSerious = 0;
+      data.results.forEach(function(r) {
+        if (r.term === 1) seriousCount = r.count;
+        else nonSerious = r.count;
+      });
+      return {
+        totalReports: seriousCount + nonSerious,
+        seriousCount: seriousCount,
+        nonSeriousCount: nonSerious,
+        riskLevel: seriousCount > 1000 ? 'elevated' : seriousCount > 100 ? 'moderate' : 'low'
+      };
+    } catch(e) { console.log('FAERS error:', e); return null; }
+  },
+
+  // --- DailyMed (NIH Drug Labels/SPL) API ---
+  queryDailyMed: async function(productName, ndc) {
+    try {
+      var url;
+      if (ndc) {
+        url = 'https://dailymed.nlm.nih.gov/dailymed/services/v2/spls.json?ndc=' + encodeURIComponent(ndc);
+      } else if (productName) {
+        var clean = productName.replace(/\s*(tablet|capsule|powder|suspension|injection|cream|ointment|solution|oral|for)\s*/gi, '').trim().split(' ')[0];
+        url = 'https://dailymed.nlm.nih.gov/dailymed/services/v2/spls.json?drug_name=' + encodeURIComponent(clean) + '&page=1&pagesize=1';
+      } else return null;
+      var res = await fetch(url);
+      if (!res.ok) return null;
+      var data = await res.json();
+      if (!data.data || data.data.length === 0) return null;
+      var spl = data.data[0];
+      return {
+        setId: spl.setid || '',
+        title: spl.title || '',
+        published: spl.published_date || '',
+        labeler: spl.labeler || '',
+        splUrl: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=' + (spl.setid || '')
+      };
+    } catch(e) { console.log('DailyMed error:', e); return null; }
+  }
+};
+
+// ============================================================
+//        EPCIS 2.0 Supply Chain Events (GS1 Standard)
+// ============================================================
+
+var EPCISEngine = {
+  _loaded: false,
+  _events: [],
+
+  load: async function() {
+    if (EPCISEngine._loaded) return EPCISEngine._events;
+    try {
+      var res = await fetch('data/openepcis-events.json');
+      if (res.ok) {
+        var data = await res.json();
+        EPCISEngine._events = (data && data.events) ? data.events : [];
+      }
+    } catch (e) {
+      console.log('EPCIS load error:', e);
+    }
+    if (EPCISEngine._events.length === 0 && typeof EPCIS_EVENTS !== 'undefined') {
+      EPCISEngine._events = EPCIS_EVENTS;
+    }
+    EPCISEngine._loaded = true;
+    return EPCISEngine._events;
+  },
+
+  // Match EPCIS events for a product by GTIN or serial (OpenEPCIS test resource format)
+  getEvents: function(gtin, serial) {
+    if (!gtin && !serial) return [];
+    var pool = EPCISEngine._events.length ? EPCISEngine._events : (typeof EPCIS_EVENTS !== 'undefined' ? EPCIS_EVENTS : []);
+    var gtinNorm = gtin ? gtin.replace(/^0+/, '') : '';
+    var events = pool.filter(function(ev) {
+      var match = false;
+      if (ev.epcList) {
+        ev.epcList.forEach(function(epc) {
+          if (gtin && epc.indexOf(gtin) > -1) match = true;
+          if (gtinNorm && epc.indexOf(gtinNorm) > -1) match = true;
+          if (serial && epc.indexOf(serial) > -1) match = true;
+        });
+      }
+      if (ev.quantityList) {
+        ev.quantityList.forEach(function(q) {
+          if (q.epcClass && gtin && q.epcClass.indexOf(gtin) > -1) match = true;
+        });
+      }
+      return match;
+    });
+    events.sort(function(a, b) {
+      return new Date(a.eventTime) - new Date(b.eventTime);
+    });
+    return events;
+  },
+
+  // Format EPCIS event for display
+  formatEvent: function(ev) {
+    var typeIcons = {
+      'ObjectEvent': '📦', 'AggregationEvent': '📋',
+      'TransactionEvent': '💰', 'TransformationEvent': '🔧'
+    };
+    var actionLabels = {
+      'ADD': 'Created / Commissioned', 'OBSERVE': 'Observed / Inspected',
+      'DELETE': 'Decommissioned / Consumed'
+    };
+    var bizStepLabels = {
+      'commissioning': '🏭 Commissioning', 'packing': '📦 Packing',
+      'shipping': '🚚 Shipping', 'receiving': '📥 Receiving',
+      'storing': '🏪 Storing', 'dispensing': '💊 Dispensing',
+      'inspecting': '🔍 Inspecting', 'retail_selling': '🛒 Retail Sale',
+      'transforming': '🔧 Transforming', 'destroying': '🗑️ Destroying',
+      'decommissioning': '⛔ Decommissioning',
+      'urn:epcglobal:cbv:bizstep:commissioning': '🏭 Commissioning',
+      'urn:epcglobal:cbv:bizstep:packing': '📦 Packing',
+      'urn:epcglobal:cbv:bizstep:shipping': '🚚 Shipping',
+      'urn:epcglobal:cbv:bizstep:receiving': '📥 Receiving',
+      'urn:epcglobal:cbv:bizstep:storing': '🏪 Storing',
+      'urn:epcglobal:cbv:bizstep:retail_selling': '🛒 Retail Sale'
+    };
+    var step = ev.bizStep ? (bizStepLabels[ev.bizStep] || ev.bizStep) : (actionLabels[ev.action] || ev.action || '—');
+    var loc = ev.readPoint ? (ev.readPoint.id || ev.readPoint) : '—';
+    // Clean up URN locations to readable text
+    if (typeof loc === 'string' && loc.startsWith('urn:')) {
+      loc = loc.split(':').pop().replace(/_/g, ' ');
+    }
+    return {
+      icon: typeIcons[ev.type] || '📋',
+      type: ev.type || 'Event',
+      step: step,
+      time: ev.eventTime || '',
+      location: loc,
+      disposition: ev.disposition || '',
+      bizTransaction: ev.bizTransactionList ? ev.bizTransactionList.map(function(t) { return t.type + ': ' + t.bizTransaction; }).join(', ') : ''
+    };
+  }
+};
+
+// Realistic EPCIS 2.0 events for demo products (GS1 standard format)
+var EPCIS_EVENTS = [
+  // Amoxicillin 500mg — full supply chain
+  { type: 'ObjectEvent', action: 'ADD', bizStep: 'commissioning',
+    eventTime: '2024-01-15T08:30:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    readPoint: { id: 'urn:epc:id:sgln:0368071.plant01' },
+    disposition: 'urn:epcglobal:cbv:disp:active',
+    ilmd: { lotNumber: 'LOT2024A001', expiryDate: '2027-12-31' }
+  },
+  { type: 'AggregationEvent', action: 'ADD', bizStep: 'packing',
+    eventTime: '2024-01-16T10:00:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    parentID: 'urn:epc:id:sscc:0368071.0000000001',
+    readPoint: { id: 'urn:epc:id:sgln:0368071.warehouse01' },
+    disposition: 'urn:epcglobal:cbv:disp:in_progress'
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'shipping',
+    eventTime: '2024-02-01T06:00:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    readPoint: { id: 'urn:epc:id:sgln:0368071.dock01' },
+    disposition: 'urn:epcglobal:cbv:disp:in_transit',
+    bizTransactionList: [{ type: 'desadv', bizTransaction: 'urn:epc:id:gdti:0368071.ASN-2024-00123' }]
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'receiving',
+    eventTime: '2024-02-15T14:30:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    readPoint: { id: 'urn:epc:id:sgln:6161234.warehouse_nairobi' },
+    disposition: 'urn:epcglobal:cbv:disp:in_progress'
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'inspecting',
+    eventTime: '2024-02-16T09:00:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    readPoint: { id: 'urn:epc:id:sgln:6161234.qa_lab_nairobi' },
+    disposition: 'urn:epcglobal:cbv:disp:active',
+    certificationInfo: 'PPB-INSP-2024-00456'
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'storing',
+    eventTime: '2024-02-17T11:00:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0368071.016191.SN-6295E590'],
+    readPoint: { id: 'urn:epc:id:sgln:6161234.pharmacy_nairobi_01' },
+    disposition: 'urn:epcglobal:cbv:disp:sellable_accessible'
+  },
+
+  // Metformin — partial chain (fewer events)
+  { type: 'ObjectEvent', action: 'ADD', bizStep: 'commissioning',
+    eventTime: '2024-03-10T07:00:00Z', eventTimeZoneOffset: '+05:30',
+    epcList: ['urn:epc:id:sgtin:0687888.052830.SN-MET-001'],
+    readPoint: { id: 'urn:epc:id:sgln:0687888.plant_india' },
+    disposition: 'urn:epcglobal:cbv:disp:active',
+    ilmd: { lotNumber: 'MET-2024-B03', expiryDate: '2027-06-30' }
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'shipping',
+    eventTime: '2024-03-20T12:00:00Z', eventTimeZoneOffset: '+05:30',
+    epcList: ['urn:epc:id:sgtin:0687888.052830.SN-MET-001'],
+    readPoint: { id: 'urn:epc:id:sgln:0687888.port_mumbai' },
+    disposition: 'urn:epcglobal:cbv:disp:in_transit'
+  },
+  { type: 'ObjectEvent', action: 'OBSERVE', bizStep: 'receiving',
+    eventTime: '2024-04-05T08:00:00Z', eventTimeZoneOffset: '+03:00',
+    epcList: ['urn:epc:id:sgtin:0687888.052830.SN-MET-001'],
+    readPoint: { id: 'urn:epc:id:sgln:6161234.port_mombasa' },
+    disposition: 'urn:epcglobal:cbv:disp:in_progress'
+  },
+
+  // Atorvastatin — manufacturing only
+  { type: 'ObjectEvent', action: 'ADD', bizStep: 'commissioning',
+    eventTime: '2024-05-01T09:00:00Z', eventTimeZoneOffset: '-05:00',
+    epcList: ['urn:epc:id:sgtin:0597623.078090.SN-ATV-001'],
+    readPoint: { id: 'urn:epc:id:sgln:0597623.plant_usa' },
+    disposition: 'urn:epcglobal:cbv:disp:active',
+    ilmd: { lotNumber: 'ATV-2024-Q2', expiryDate: '2027-12-15' }
+  }
+];
+
+// ============================================================
+//        VERIFICATION LAYERS ENGINE
+// ============================================================
+
+var VerificationLayers = {
+  // Run all verification layers in parallel, return evidence per layer
+  verify: async function(query, productData, gs1Meta) {
+    var layers = [];
+    var productName = productData ? productData.productName : query;
+    var ndc = productData ? productData.ndc : null;
+    var gtin = gs1Meta ? gs1Meta.gtin : null;
+    var serial = gs1Meta ? gs1Meta.serial : null;
+
+    // Layer 1: Barcode Integrity (synchronous)
+    var barcodeLayer = { id: 'barcode', name: 'Barcode Integrity', icon: '📊', status: 'unchecked', detail: '' };
+    if (gtin) {
+      var valid = Utils.validateGTIN(gtin);
+      barcodeLayer.status = valid ? 'pass' : 'fail';
+      barcodeLayer.detail = valid ? 'GS1 check digit valid (GTIN-' + gtin.length + ')' : 'Invalid check digit — possible counterfeit barcode';
+      if (gs1Meta.lot) barcodeLayer.detail += ' | Lot: ' + gs1Meta.lot;
+      if (gs1Meta.serial) barcodeLayer.detail += ' | S/N: ' + gs1Meta.serial;
+    } else {
+      barcodeLayer.status = 'skip';
+      barcodeLayer.detail = 'No GS1 barcode data — entered as text query';
+    }
+    layers.push(barcodeLayer);
+
+    // Layer 2: Product Identity — product-type lookup, not unit authentication
+    var identityLayer = { id: 'identity', name: 'Product Type Identity (FDA/RxNorm)', icon: '🆔', status: 'unchecked', detail: '' };
+    if (productData && productData.exists !== false && productData.productName) {
+      identityLayer.status = productData.onChainVerified ? 'pass' : 'warn';
+      identityLayer.detail = productData.productName + (productData.source ? ' — via ' + productData.source : '') +
+        (productData.onChainVerified ? ' (unit registered on-chain)' : ' (product type only — does not prove this package is genuine)');
+    } else {
+      identityLayer.status = 'fail';
+      identityLayer.detail = 'Product type not found in FDA NDC, RxNorm, or WHO reference data';
+    }
+    layers.push(identityLayer);
+
+    // Layers 3-5: Run in parallel (real API calls)
+    var promises = [];
+
+    // Layer 3: FDA Recall Check
+    promises.push(GlobalLookup.queryFDARecalls(productName, ndc).then(function(result) {
+      var layer = { id: 'recalls', name: 'Recall Status (FDA Enforcement)', icon: '🚨', status: 'unchecked', detail: '' };
+      if (result === null) {
+        layer.status = 'skip';
+        layer.detail = 'Could not query FDA recall database';
+      } else if (result.recalled) {
+        layer.status = 'fail';
+        layer.detail = result.activeCount + ' active recall(s) — ' + (result.recalls[0].classification || 'Unknown class') + ': ' + (result.recalls[0].reason || '').substring(0, 100);
+        layer.recalls = result.recalls;
+      } else if (result.totalCount > 0) {
+        layer.status = 'warn';
+        layer.detail = 'No active recalls — ' + result.totalCount + ' historical recall(s) found (resolved)';
+      } else {
+        layer.status = 'pass';
+        layer.detail = 'No recalls found in FDA enforcement database';
+      }
+      return layer;
+    }).catch(function() { return { id: 'recalls', name: 'Recall Status (FDA Enforcement)', icon: '🚨', status: 'skip', detail: 'FDA recall check unavailable' }; }));
+
+    // Layer 4: Adverse Events (FAERS)
+    promises.push(GlobalLookup.queryFDAAdverseEvents(productName).then(function(result) {
+      var layer = { id: 'faers', name: 'Adverse Events (FDA FAERS)', icon: '⚕️', status: 'unchecked', detail: '' };
+      if (!result) {
+        layer.status = 'skip';
+        layer.detail = 'Could not query FAERS database';
+      } else if (result.totalReports === 0) {
+        layer.status = 'pass';
+        layer.detail = 'No adverse event reports found';
+      } else {
+        layer.status = result.riskLevel === 'elevated' ? 'warn' : 'info';
+        layer.detail = result.totalReports.toLocaleString() + ' reports (' + result.seriousCount.toLocaleString() + ' serious) — risk level: ' + result.riskLevel;
+        layer.faersData = result;
+      }
+      return layer;
+    }).catch(function() { return { id: 'faers', name: 'Adverse Events (FDA FAERS)', icon: '⚕️', status: 'skip', detail: 'FAERS check unavailable' }; }));
+
+    // Layer 5: DailyMed Drug Label
+    promises.push(GlobalLookup.queryDailyMed(productName, ndc).then(function(result) {
+      var layer = { id: 'dailymed', name: 'Drug Label (NIH DailyMed)', icon: '📋', status: 'unchecked', detail: '' };
+      if (!result) {
+        layer.status = 'skip';
+        layer.detail = 'No SPL/label data found in DailyMed';
+      } else {
+        layer.status = 'pass';
+        layer.detail = result.title ? result.title.substring(0, 80) : 'Label found';
+        if (result.labeler) layer.detail += ' — ' + result.labeler;
+        layer.splUrl = result.splUrl;
+      }
+      return layer;
+    }).catch(function() { return { id: 'dailymed', name: 'Drug Label (NIH DailyMed)', icon: '📋', status: 'skip', detail: 'DailyMed check unavailable' }; }));
+
+    var apiLayers = await Promise.all(promises);
+    layers = layers.concat(apiLayers);
+
+    // Layer 6: EPCIS Supply Chain Events (OpenEPCIS test resources + on-chain custody)
+    await EPCISEngine.load();
+    var epcisLayer = { id: 'epcis', name: 'Supply Chain Events (EPCIS 2.0)', icon: '🔗', status: 'unchecked', detail: '', events: [] };
+    var epcisEvents = EPCISEngine.getEvents(gtin || '', serial || '');
+    // Also check demo DB supply chain
+    if (epcisEvents.length === 0 && productData && productData.supplyChain && productData.supplyChain.length > 0) {
+      epcisLayer.status = 'pass';
+      epcisLayer.detail = productData.supplyChain.length + ' custody events on blockchain';
+      epcisLayer.supplyChain = productData.supplyChain;
+    } else if (epcisEvents.length > 0) {
+      epcisLayer.status = 'pass';
+      epcisLayer.detail = epcisEvents.length + ' EPCIS 2.0 events traced (commissioning → delivery)';
+      epcisLayer.events = epcisEvents.map(function(e) { return EPCISEngine.formatEvent(e); });
+    } else {
+      epcisLayer.status = 'fail';
+      epcisLayer.detail = 'No supply chain events recorded — product provenance unknown';
+    }
+    layers.push(epcisLayer);
+
+    // Layer 7: Serialization
+    var serialLayer = { id: 'serial', name: 'Serialization Verification', icon: '🔢', status: 'unchecked', detail: '' };
+    if (serial || (gs1Meta && gs1Meta.serial)) {
+      var sn = serial || gs1Meta.serial;
+      // Check if serial exists in demo DB
+      var serialMatch = typeof DEMO_DB !== 'undefined' ? DEMO_DB.products.find(function(p) { return p.serialNumber === sn; }) : null;
+      if (serialMatch) {
+        serialLayer.status = 'pass';
+        serialLayer.detail = 'Serial ' + sn + ' verified — matches registered unit';
+      } else {
+        serialLayer.status = 'warn';
+        serialLayer.detail = 'Serial ' + sn + ' not in local registry — may be legitimate but unregistered';
+      }
+    } else {
+      serialLayer.status = 'skip';
+      serialLayer.detail = 'No serial number provided — unit-level verification not possible';
+    }
+    layers.push(serialLayer);
+
+    // Layer 8: Regulatory Registration
+    var regLayer = { id: 'regulatory', name: 'Regulatory Registration', icon: '🏛️', status: 'unchecked', detail: '' };
+    if (productData && productData.regulatoryBody) {
+      regLayer.status = 'pass';
+      regLayer.detail = 'Regulated by ' + productData.regulatoryBody;
+    } else if (productData && productData.whoPrequalified) {
+      regLayer.status = 'pass';
+      regLayer.detail = 'WHO Prequalification Programme approved';
+    } else if (productData && productData.kenyaVerified) {
+      regLayer.status = 'pass';
+      regLayer.detail = 'Verified in Kenya PPB import registry';
+    } else {
+      regLayer.status = 'skip';
+      regLayer.detail = 'Regulatory registration not confirmed — check with local authority';
+    }
+    layers.push(regLayer);
+
+    return layers;
+  },
+
+  // Calculate a trust score from verification layers
+  calculateTrust: function(layers) {
+    var weights = { barcode: 10, identity: 25, recalls: 20, faers: 5, dailymed: 10, epcis: 15, serial: 10, regulatory: 5 };
+    var score = 0;
+    var maxScore = 0;
+    layers.forEach(function(l) {
+      var w = weights[l.id] || 5;
+      maxScore += w;
+      if (l.status === 'pass') score += w;
+      else if (l.status === 'info') score += w * 0.8;
+      else if (l.status === 'warn') score += w * 0.5;
+      else if (l.status === 'skip') score += w * 0.3; // partial credit for unchecked
+      // 'fail' adds 0
+    });
+    return Math.round((score / maxScore) * 100);
+  },
+
+  // Render HTML for verification layers panel
+  renderHTML: function(layers) {
+    var html = '<div class="verification-layers mt-lg"><h3 class="mb-md">🔍 Verification Evidence</h3>';
+    html += '<div class="layers-grid">';
+    layers.forEach(function(l) {
+      var statusClass = 'layer-' + l.status;
+      var statusIcon = { pass: '✅', fail: '❌', warn: '⚠️', skip: '⏭️', info: 'ℹ️', unchecked: '⏳' }[l.status] || '❓';
+      html += '<div class="layer-item ' + statusClass + '">' +
+        '<div class="layer-header">' +
+          '<span class="layer-icon">' + l.icon + '</span>' +
+          '<span class="layer-name">' + Utils.escapeHtml(l.name) + '</span>' +
+          '<span class="layer-status">' + statusIcon + '</span>' +
+        '</div>' +
+        '<div class="layer-detail">' + Utils.escapeHtml(l.detail || '—') + '</div>';
+      // EPCIS event timeline
+      if (l.events && l.events.length > 0) {
+        html += '<div class="epcis-timeline">';
+        l.events.forEach(function(ev) {
+          var timeStr = ev.time ? new Date(ev.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          html += '<div class="epcis-event">' +
+            '<span class="epcis-step">' + Utils.escapeHtml(ev.step) + '</span>' +
+            '<span class="epcis-loc">' + Utils.escapeHtml(ev.location) + '</span>' +
+            '<span class="epcis-time">' + Utils.escapeHtml(timeStr) + '</span>' +
+          '</div>';
+        });
+        html += '</div>';
+      }
+      // SPL link
+      if (l.splUrl) {
+        html += '<a href="' + Utils.escapeAttr(l.splUrl) + '" target="_blank" rel="noopener noreferrer" class="layer-link">View full drug label on DailyMed →</a>';
+      }
+      html += '</div>';
+    });
+    html += '</div></div>';
+    return html;
   }
 };
 
@@ -844,20 +1317,20 @@ var Renderers = {
     var detailsHtml = '';
     if (data && data.exists !== false && data.productName) {
       detailsHtml = '<div class="result-details grid-2 mt-lg">' +
-        '<div class="detail-item"><span class="detail-label">Product</span><span class="detail-value">' + (data.productName || '—') + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Manufacturer</span><span class="detail-value">' + (data.manufacturer || '—') + '</span></div>' +
-        (data.genericName ? '<div class="detail-item"><span class="detail-label">Generic Name</span><span class="detail-value">' + data.genericName + '</span></div>' : '') +
-        '<div class="detail-item"><span class="detail-label">GTIN</span><span class="detail-value text-mono">' + (data.gtin || '—') + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Serial</span><span class="detail-value text-mono">' + (data.serialNumber || '—') + '</span></div>' +
-        '<div class="detail-item"><span class="detail-label">Lot</span><span class="detail-value text-mono">' + (data.lotNumber || '—') + '</span></div>' +
+        '<div class="detail-item"><span class="detail-label">Product</span><span class="detail-value">' + Utils.escapeHtml(data.productName || '—') + '</span></div>' +
+        '<div class="detail-item"><span class="detail-label">Manufacturer</span><span class="detail-value">' + Utils.escapeHtml(data.manufacturer || '—') + '</span></div>' +
+        (data.genericName ? '<div class="detail-item"><span class="detail-label">Generic Name</span><span class="detail-value">' + Utils.escapeHtml(data.genericName) + '</span></div>' : '') +
+        '<div class="detail-item"><span class="detail-label">GTIN</span><span class="detail-value text-mono">' + Utils.escapeHtml(data.gtin || '—') + '</span></div>' +
+        '<div class="detail-item"><span class="detail-label">Serial</span><span class="detail-value text-mono">' + Utils.escapeHtml(data.serialNumber || '—') + '</span></div>' +
+        '<div class="detail-item"><span class="detail-label">Lot</span><span class="detail-value text-mono">' + Utils.escapeHtml(data.lotNumber || '—') + '</span></div>' +
         (data.manufactureDate ? '<div class="detail-item"><span class="detail-label">Manufactured</span><span class="detail-value">' + Utils.formatDate(data.manufactureDate) + '</span></div>' : '') +
         (data.expiryDate ? '<div class="detail-item"><span class="detail-label">Expires</span><span class="detail-value">' + Utils.formatDate(data.expiryDate) + '</span></div>' : '') +
         '<div class="detail-item"><span class="detail-label">Custody Events</span><span class="detail-value">' + (data.custodyCount || (data.supplyChain ? data.supplyChain.length : 0)) + '</span></div>' +
-        (data.country ? '<div class="detail-item"><span class="detail-label">Origin Country</span><span class="detail-value">' + (data.flag || '🌐') + ' ' + data.country + '</span></div>' : '') +
-        (data.regulatoryBody ? '<div class="detail-item"><span class="detail-label">Regulatory Body</span><span class="detail-value">' + data.regulatoryBody + '</span></div>' : '') +
-        (data.source ? '<div class="detail-item"><span class="detail-label">Data Source</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">' + data.source + '</span></span></div>' : '') +
-        (data.ndc ? '<div class="detail-item"><span class="detail-label">NDC</span><span class="detail-value text-mono">' + data.ndc + '</span></div>' : '') +
-        (data.dosageForm ? '<div class="detail-item"><span class="detail-label">Dosage Form</span><span class="detail-value">' + data.dosageForm + '</span></div>' : '') +
+        (data.country ? '<div class="detail-item"><span class="detail-label">Origin Country</span><span class="detail-value">' + Utils.escapeHtml((data.flag || '🌐') + ' ' + data.country) + '</span></div>' : '') +
+        (data.regulatoryBody ? '<div class="detail-item"><span class="detail-label">Regulatory Body</span><span class="detail-value">' + Utils.escapeHtml(data.regulatoryBody) + '</span></div>' : '') +
+        (data.source ? '<div class="detail-item"><span class="detail-label">Data Source</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">' + Utils.escapeHtml(data.source) + '</span></span></div>' : '') +
+        (data.ndc ? '<div class="detail-item"><span class="detail-label">NDC</span><span class="detail-value text-mono">' + Utils.escapeHtml(data.ndc) + '</span></div>' : '') +
+        (data.dosageForm ? '<div class="detail-item"><span class="detail-label">Dosage Form</span><span class="detail-value">' + Utils.escapeHtml(data.dosageForm) + '</span></div>' : '') +
         (data.whoPrequalified ? '<div class="detail-item"><span class="detail-label">WHO Status</span><span class="detail-value"><span class="pill pill-success" style="font-size:11px">✅ WHO Prequalified</span></span></div>' : '') +
         (data.kenyaVerified ? '<div class="detail-item"><span class="detail-label">Kenya Market</span><span class="detail-value"><span class="pill pill-accent" style="font-size:11px">🇰🇪 Kenya Import Verified</span></span></div>' : '') +
       '</div>';
@@ -865,7 +1338,7 @@ var Renderers = {
 
     var signalsHtml = '<div class="risk-signals mt-lg"><h3 class="mb-md">Risk Signals</h3>';
     r.signals.forEach(function(s) {
-      signalsHtml += '<div class="signal-item">' + s + '</div>';
+      signalsHtml += '<div class="signal-item">' + Utils.escapeHtml(s) + '</div>';
     });
     signalsHtml += '</div>';
 
@@ -873,8 +1346,8 @@ var Renderers = {
 
     var actionsHtml = '<div class="result-actions mt-lg" style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn btn-primary" onclick="UI.renderWith(Renderers.verify)">← Verify Another</button>' +
-      (r.status === 'COUNTERFEIT' || r.status === 'SUSPICIOUS' ? '<button class="btn btn-danger" onclick="UI.reportCounterfeit(\'' + (query || '') + '\')">🚨 Report Counterfeit</button>' : '') +
-      (data && data.exists !== false ? '<button class="btn btn-soft" onclick="navigate(\'/track?id=' + (query || '') + '\')">📦 Track Supply Chain</button>' : '') +
+      (r.status === 'COUNTERFEIT' || r.status === 'SUSPICIOUS' ? '<button class="btn btn-danger" onclick="UI.reportCounterfeit(\'' + Utils.escapeAttr(query || '') + '\',\'' + (data && data.gtin && data.serialNumber ? Utils.escapeAttr(Utils.computeProductId(data.gtin, data.serialNumber) || '') : '') + '\')">🚨 Report Counterfeit</button>' : '') +
+      (data && data.exists !== false ? '<button class="btn btn-soft" onclick="navigate(\'/track?id=' + Utils.escapeAttr(data.serialNumber || query || '') + '\')">📦 Track Supply Chain</button>' : '') +
     '</div>';
 
     return '<div class="container mt-xl">' +
@@ -883,7 +1356,7 @@ var Renderers = {
           '<div class="result-gauge">' + gauge + '</div>' +
           '<div class="result-status">' +
             '<div class="result-status-label" style="color:' + color + '">' + icon + ' ' + statusLabel + '</div>' +
-            '<p class="text-secondary text-sm">Query: <span class="text-mono">' + (query || '—') + '</span></p>' +
+            '<p class="text-secondary text-sm">Query: <span class="text-mono">' + Utils.escapeHtml(query || '—') + '</span></p>' +
           '</div>' +
         '</div>' +
         detailsHtml +
@@ -1744,6 +2217,25 @@ var UI = {
     if (fn === Renderers.result && a && a.supplyChain) {
       BlockchainService.renderSupplyChainTimeline(a.supplyChain);
     }
+    // Run verification layers after rendering result
+    if (fn === Renderers.result) {
+      var productData = a || {};
+      var query = b || '';
+      var gs1Meta = window._pendingGS1 || null;
+      window._pendingGS1 = null;
+      // Inject placeholder
+      var resultCard = document.querySelector('.result-card');
+      if (resultCard) {
+        var layersPlaceholder = document.createElement('div');
+        layersPlaceholder.id = 'layers-panel';
+        layersPlaceholder.innerHTML = '<div class="verification-layers mt-lg"><h3 class="mb-md">🔍 Verification Evidence</h3><div style="text-align:center;padding:20px"><div class="spinner-ring" style="width:24px;height:24px;border-width:2px"></div><p class="text-xs text-secondary mt-sm">Running 8 verification layers...</p></div></div>';
+        resultCard.appendChild(layersPlaceholder);
+        VerificationLayers.verify(query, productData, gs1Meta).then(function(layers) {
+          var el = document.getElementById('layers-panel');
+          if (el) el.innerHTML = VerificationLayers.renderHTML(layers);
+        }).catch(function(e) { console.log('Layers error:', e); });
+      }
+    }
   },
 
   switchVerifyTab: function(tabId) {
@@ -1978,13 +2470,14 @@ var UI = {
     document.getElementById('modal-overlay').classList.add('active');
   },
 
-  showTransferModal: function(serialNumber) {
+  showTransferModal: function(serialNumber, gtin) {
     var html = '<div class="modal-header"><h3>Transfer Custody</h3><button class="modal-close" onclick="UI.hideModal()">×</button></div>' +
-      '<p class="text-sm mb-md">Serial: <span class="text-mono">' + serialNumber + '</span></p>' +
+      '<p class="text-sm mb-md">Serial: <span class="text-mono">' + Utils.escapeHtml(serialNumber) + '</span>' +
+      (gtin ? ' · GTIN: <span class="text-mono">' + Utils.escapeHtml(gtin) + '</span>' : '') + '</p>' +
       '<div class="form-group mb-md"><label class="form-label">Recipient Address</label><input type="text" id="trans-to" class="form-input text-mono" placeholder="0x..."></div>' +
       '<div class="form-group mb-md"><label class="form-label">Location</label><input type="text" id="trans-loc" class="form-input" placeholder="e.g. Nairobi Central Hub"></div>' +
       '<div class="form-group mb-lg"><label class="form-label">Event Type</label><select id="trans-event" class="form-input"><option value="shipped">Shipped</option><option value="received">Received</option><option value="dispensed">Dispensed</option></select></div>' +
-      '<button class="btn btn-primary w-full btn-lg" onclick="BlockchainService.transferCustody(\'' + serialNumber + '\')">Record Transfer</button>';
+      '<button class="btn btn-primary w-full btn-lg" onclick="BlockchainService.transferCustody(\'' + Utils.escapeAttr(serialNumber) + '\',\'' + Utils.escapeAttr(gtin || '') + '\')">Record Transfer</button>';
     document.getElementById('modal-content').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('active');
   },
@@ -2020,11 +2513,19 @@ var UI = {
     });
   },
 
-  reportCounterfeit: function(query) {
-    Utils.showToast('🚨 Reporting counterfeit to authorities...', 'warning');
-    setTimeout(function() {
-      Utils.showToast('Counterfeit report logged for ' + query, 'success');
-    }, 1000);
+  reportCounterfeit: function(query, productId) {
+    Utils.showToast('Submitting counterfeit report...', 'warning');
+    if (!demoMode && contract && productId) {
+      contract.reportCounterfeit(productId, 'Consumer report via DawaTrace UI').then(function(tx) {
+        return tx.wait();
+      }).then(function() {
+        Utils.showToast('Counterfeit report recorded on-chain', 'success');
+      }).catch(function(e) {
+        Utils.showToast('Report failed: ' + (e.reason || e.message || 'Unknown'), 'error');
+      });
+      return;
+    }
+    Utils.showToast('Counterfeit report logged locally for ' + query + ' (demo)', 'success');
   }
 };
 
@@ -2113,6 +2614,7 @@ var BlockchainService = {
       if (!contractAddress) contractAddress = DEFAULT_CONTRACT_ADDRESS;
 
       contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
+      readContract = contract;
       isConnected = true; demoMode = false;
 
       // Detect role
@@ -2145,35 +2647,33 @@ var BlockchainService = {
       var looksGS1 = /\(\d{2,4}\)/.test(query) || /^\](?:d|C|e|Q)/.test(query) || /^01\d{14}/.test(query);
       if (looksGS1) {
         gs1Meta = Utils.parseGS1(query);
-        if (gs1Meta.gtin || gs1Meta.serial || gs1Meta.lot) {
-          // Use GTIN as primary lookup key
-          if (gs1Meta.gtin) {
-            query = gs1Meta.gtin;
-            if (input) input.value = query; // show the parsed GTIN in the field
-          } else if (gs1Meta.serial) {
-            query = gs1Meta.serial;
-          }
-        } else {
+        if (!(gs1Meta.gtin || gs1Meta.serial || gs1Meta.lot)) {
           gs1Meta = null;
         }
       }
     }
     if (!gs1Meta) gs1Meta = {};
+    // Store for verification layers (consumed by renderWith → VerificationLayers.verify)
+    window._pendingGS1 = Object.keys(gs1Meta).length > 0 ? gs1Meta : null;
 
-    document.getElementById('app').innerHTML = '<div class="verify-spinner container"><div class="spinner-ring"></div><h3>Analyzing product...</h3><p class="text-secondary text-mono">' + query + '</p></div>';
+    var identity = Utils.resolveProductIdentity(query, gs1Meta);
+    var displayQuery = identity.serial && identity.gtin
+      ? identity.gtin + ' / ' + identity.serial
+      : (identity.serial || identity.gtin || query);
+
+    document.getElementById('app').innerHTML = '<div class="verify-spinner container"><div class="spinner-ring"></div><h3>Analyzing product...</h3><p class="text-secondary text-mono">' + Utils.escapeHtml(displayQuery) + '</p></div>';
     await Utils.delay(800);
 
     // --- DEMO MODE ---
     if (demoMode) {
 
-      // Search by serial, then GTIN, then product name
+      // Search by serial, GTIN, or product name
       var product = DEMO_DB.products.find(function(p) {
-        return p.serialNumber === query || p.gtin === query || p.productName.toLowerCase().includes(query.toLowerCase());
+        return (identity.serial && p.serialNumber === identity.serial) ||
+          (identity.gtin && p.gtin === identity.gtin) ||
+          p.serialNumber === query || p.gtin === query ||
+          p.productName.toLowerCase().includes(query.toLowerCase());
       });
-      // Also try matching by GS1 serial if GTIN was used as query
-      if (!product && gs1Meta.serial) {
-        product = DEMO_DB.products.find(function(p) { return p.serialNumber === gs1Meta.serial; });
-      }
 
       if (product) {
         // Enrich with GS1 barcode data if available
@@ -2201,14 +2701,14 @@ var BlockchainService = {
           manufactureDate: product.manufactureDate,
           supplyChain: product.supplyChain
         });
-        UI.renderWith(Renderers.result, product, query, riskResult);
+        UI.renderWith(Renderers.result, product, displayQuery, riskResult);
         return;
       }
 
       // --- GLOBAL HOT LOOKUP: Multi-source cascade ---
       Utils.showToast('Not in local database — searching Kenya import registries & global sources...', 'info');
       try {
-        var globalResult = await GlobalLookup.lookup(query);
+        var globalResult = await GlobalLookup.lookup(identity.gtin || identity.serial || query);
         if (globalResult && globalResult.found) {
           var untracked = {
             exists: true,
@@ -2243,7 +2743,7 @@ var BlockchainService = {
             untracked.isExpired = untracked.expiryDate < (Date.now() / 1000);
           }
           var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
-          UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
+          UI.renderWith(Renderers.result, untracked, displayQuery, untrackedRisk);
           return;
         }
       } catch(e) { console.log('Global lookup error:', e); }
@@ -2251,16 +2751,21 @@ var BlockchainService = {
       // Not found anywhere
       var fakeData = { exists: false };
       var fakeRisk = RiskEngine.score(fakeData);
-      UI.renderWith(Renderers.result, fakeData, query, fakeRisk);
+      UI.renderWith(Renderers.result, fakeData, displayQuery, fakeRisk);
       return;
     }
 
     // --- LIVE MODE ---
     try {
-      var productId = ethers.id(query);
-      var result = await contract.verifyProductView(productId);
+      var contractRef = readContract || contract;
+      var productId = identity.productId;
+      var result = null;
 
-      if (result.exists) {
+      if (productId) {
+        result = await contractRef.verifyProductView(productId);
+      }
+
+      if (result && result.exists) {
         // Product found on blockchain — render with full provenance
         var liveProduct = {
           exists: result.exists,
@@ -2277,10 +2782,12 @@ var BlockchainService = {
           custodyCount: result.custodyCount,
           scanCount: result.scanCount,
           recallReason: result.recallReason,
-          status: result.status
+          status: result.status,
+          onChainVerified: true,
+          supplyChain: []
         };
         var liveRisk = RiskEngine.score(liveProduct);
-        UI.renderWith(Renderers.result, liveProduct, query, liveRisk);
+        UI.renderWith(Renderers.result, liveProduct, displayQuery, liveRisk);
 
         // Load live custody chain
         try {
@@ -2293,14 +2800,14 @@ var BlockchainService = {
       // Product NOT on blockchain — cascade to Global Lookup before giving up
       Utils.showToast('Not on blockchain — searching Kenya import registries & global sources...', 'info');
       try {
-        var globalResult = await GlobalLookup.lookup(query);
+        var globalResult = await GlobalLookup.lookup(identity.gtin || identity.serial || query);
         if (globalResult && globalResult.found) {
           var untracked = {
             exists: true,
             productName: globalResult.productName || 'Unknown Product',
             manufacturer: globalResult.manufacturer || '—',
-            gtin: /^\d{8,14}$/.test(query) ? query : '—',
-            serialNumber: '—', lotNumber: '—',
+            gtin: identity.gtin || (/^\d{8,14}$/.test(query) ? query : '—'),
+            serialNumber: identity.serial || '—', lotNumber: identity.lot || '—',
             manufactureDate: 0, expiryDate: 0,
             custodyCount: 0, isRecalled: false, isExpired: false, scanCount: 0,
             source: globalResult.source,
@@ -2315,7 +2822,7 @@ var BlockchainService = {
             sourceCountry: globalResult.country
           };
           var untrackedRisk = RiskEngine.scoreUntracked(globalResult);
-          UI.renderWith(Renderers.result, untracked, query, untrackedRisk);
+          UI.renderWith(Renderers.result, untracked, displayQuery, untrackedRisk);
           return;
         }
       } catch(ge) { console.log('Global lookup error (live):', ge); }
@@ -2323,20 +2830,20 @@ var BlockchainService = {
       // Not found anywhere — show NOT_FOUND (not COUNTERFEIT)
       var notFoundData = { exists: false };
       var notFoundRisk = RiskEngine.score(notFoundData);
-      UI.renderWith(Renderers.result, notFoundData, query, notFoundRisk);
+      UI.renderWith(Renderers.result, notFoundData, displayQuery, notFoundRisk);
 
     } catch(err) {
       console.error('Verification error:', err);
       // Network/contract error — still try Global Lookup
       try {
-        var globalFallback = await GlobalLookup.lookup(query);
+        var globalFallback = await GlobalLookup.lookup(identity.gtin || identity.serial || query);
         if (globalFallback && globalFallback.found) {
           var fbData = {
             exists: true,
             productName: globalFallback.productName || 'Unknown Product',
             manufacturer: globalFallback.manufacturer || '—',
-            gtin: /^\d{8,14}$/.test(query) ? query : '—',
-            serialNumber: '—', lotNumber: '—',
+            gtin: identity.gtin || (/^\d{8,14}$/.test(query) ? query : '—'),
+            serialNumber: identity.serial || '—', lotNumber: '—',
             manufactureDate: 0, expiryDate: 0,
             custodyCount: 0, isRecalled: false, isExpired: false, scanCount: 0,
             source: globalFallback.source,
@@ -2351,13 +2858,13 @@ var BlockchainService = {
             sourceCountry: globalFallback.country
           };
           var fbRisk = RiskEngine.scoreUntracked(globalFallback);
-          UI.renderWith(Renderers.result, fbData, query, fbRisk);
+          UI.renderWith(Renderers.result, fbData, displayQuery, fbRisk);
           return;
         }
       } catch(ge2) { console.log('Global fallback error:', ge2); }
       var errData = { exists: false };
       var errRisk = RiskEngine.score(errData);
-      UI.renderWith(Renderers.result, errData, query, errRisk);
+      UI.renderWith(Renderers.result, errData, displayQuery, errRisk);
     }
   },
 
@@ -2373,8 +2880,8 @@ var BlockchainService = {
       html += '<div class="timeline-item">' +
         '<div class="timeline-marker"><div class="timeline-dot ' + dotClass + '"></div><div class="timeline-line"></div></div>' +
         '<div class="timeline-content">' +
-          '<h4>' + icon + ' ' + (evt.eventType || '').charAt(0).toUpperCase() + (evt.eventType || '').slice(1) + '</h4>' +
-          '<p class="text-sm text-secondary">' + evt.location + '</p>' +
+          '<h4>' + icon + ' ' + Utils.escapeHtml((evt.eventType || '').charAt(0).toUpperCase() + (evt.eventType || '').slice(1)) + '</h4>' +
+          '<p class="text-sm text-secondary">' + Utils.escapeHtml(evt.location) + '</p>' +
           '<p class="text-xs text-muted">' + Utils.formatDate(evt.timestamp) + '</p>' +
         '</div></div>';
     });
@@ -2394,8 +2901,8 @@ var BlockchainService = {
       html += '<div class="timeline-item">' +
         '<div class="timeline-marker"><div class="timeline-dot ' + dotClass + '"></div><div class="timeline-line"></div></div>' +
         '<div class="timeline-content">' +
-          '<h4>' + icon + ' ' + (rec.eventType || '').charAt(0).toUpperCase() + (rec.eventType || '').slice(1) + '</h4>' +
-          '<p class="text-sm text-secondary">' + rec.location + '</p>' +
+          '<h4>' + icon + ' ' + Utils.escapeHtml((rec.eventType || '').charAt(0).toUpperCase() + (rec.eventType || '').slice(1)) + '</h4>' +
+          '<p class="text-sm text-secondary">' + Utils.escapeHtml(rec.location) + '</p>' +
           '<p class="text-xs text-muted">' + Utils.formatDate(rec.timestamp) + ' · ' + Utils.shortAddr(rec.to) + '</p>' +
         '</div></div>';
     }
@@ -2408,29 +2915,41 @@ var BlockchainService = {
     var query = input ? input.value.trim() : '';
     if (!query) { Utils.showToast('Enter a serial or GTIN', 'error'); return; }
 
+    var gs1Meta = Utils.parseGS1(query);
+    if (!(gs1Meta.gtin || gs1Meta.serial)) gs1Meta = {};
+    var identity = Utils.resolveProductIdentity(query, gs1Meta);
+
     var resultEl = document.getElementById('track-result');
     resultEl.innerHTML = '<div class="card"><div class="empty-state"><div class="spinner-ring" style="width:32px;height:32px;margin:0 auto"></div><p class="mt-md">Tracing supply chain...</p></div></div>';
     await Utils.delay(600);
 
     if (demoMode) {
-      var product = DEMO_DB.products.find(function(p) { return p.serialNumber === query || p.gtin === query; });
+      var product = DEMO_DB.products.find(function(p) {
+        return (identity.serial && p.serialNumber === identity.serial) ||
+          (identity.gtin && p.gtin === identity.gtin) ||
+          p.serialNumber === query || p.gtin === query;
+      });
       if (!product || !product.supplyChain) {
         resultEl.innerHTML = '<div class="card"><div class="empty-state"><div class="empty-icon">❌</div><p>Product not found — cannot trace.</p></div></div>';
         return;
       }
       var eventIcons = { manufactured: '🏭', imported: '🚢', shipped: '🚚', received: '📦', dispensed: '💊' };
-      var html = '<div class="card"><h3 class="mb-md">' + product.productName + '</h3><p class="text-sm text-secondary mb-lg">' + product.manufacturer + ' · ' + product.serialNumber + '</p><div class="timeline">';
+      var html = '<div class="card"><h3 class="mb-md">' + Utils.escapeHtml(product.productName) + '</h3><p class="text-sm text-secondary mb-lg">' + Utils.escapeHtml(product.manufacturer) + ' · ' + Utils.escapeHtml(product.serialNumber) + '</p><div class="timeline">';
       product.supplyChain.forEach(function(evt, i) {
         var icon = eventIcons[evt.eventType] || '📍';
         var dotClass = i === product.supplyChain.length - 1 ? 'active' : '';
-        html += '<div class="timeline-item"><div class="timeline-marker"><div class="timeline-dot ' + dotClass + '"></div><div class="timeline-line"></div></div><div class="timeline-content"><h4>' + icon + ' ' + (evt.eventType||'').charAt(0).toUpperCase() + (evt.eventType||'').slice(1) + '</h4><p class="text-sm text-secondary">' + evt.location + '</p><p class="text-xs text-muted">' + Utils.formatDate(evt.timestamp) + '</p></div></div>';
+        html += '<div class="timeline-item"><div class="timeline-marker"><div class="timeline-dot ' + dotClass + '"></div><div class="timeline-line"></div></div><div class="timeline-content"><h4>' + icon + ' ' + Utils.escapeHtml((evt.eventType||'').charAt(0).toUpperCase() + (evt.eventType||'').slice(1)) + '</h4><p class="text-sm text-secondary">' + Utils.escapeHtml(evt.location) + '</p><p class="text-xs text-muted">' + Utils.formatDate(evt.timestamp) + '</p></div></div>';
       });
       html += '</div></div>';
       resultEl.innerHTML = html;
     } else {
       try {
-        var productId = ethers.id(query);
-        var liveChain = await contract.getCustodyChain(productId);
+        if (!identity.productId) {
+          resultEl.innerHTML = '<div class="card"><div class="empty-state"><div class="empty-icon">❌</div><p>Provide both GTIN and serial number to trace on-chain.</p></div></div>';
+          return;
+        }
+        var contractRef = readContract || contract;
+        var liveChain = await contractRef.getCustodyChain(identity.productId);
         if (liveChain.length === 0) {
           resultEl.innerHTML = '<div class="card"><div class="empty-state"><div class="empty-icon">❌</div><p>No custody records found on blockchain.</p></div></div>';
           return;
@@ -2438,7 +2957,7 @@ var BlockchainService = {
         var liveHtml = '<div class="card"><h3 class="mb-md">On-Chain Supply Chain</h3><div class="timeline">';
         for (var i = 0; i < liveChain.length; i++) {
           var r = liveChain[i];
-          liveHtml += '<div class="timeline-item"><div class="timeline-marker"><div class="timeline-dot ' + (i === liveChain.length-1 ? 'active' : '') + '"></div><div class="timeline-line"></div></div><div class="timeline-content"><h4>' + r.eventType + '</h4><p class="text-sm text-secondary">' + r.location + '</p><p class="text-xs text-muted">' + Utils.formatDate(r.timestamp) + '</p></div></div>';
+          liveHtml += '<div class="timeline-item"><div class="timeline-marker"><div class="timeline-dot ' + (i === liveChain.length-1 ? 'active' : '') + '"></div><div class="timeline-line"></div></div><div class="timeline-content"><h4>' + Utils.escapeHtml(r.eventType) + '</h4><p class="text-sm text-secondary">' + Utils.escapeHtml(r.location) + '</p><p class="text-xs text-muted">' + Utils.formatDate(r.timestamp) + '</p></div></div>';
         }
         liveHtml += '</div></div>';
         resultEl.innerHTML = liveHtml;
@@ -2487,7 +3006,7 @@ var BlockchainService = {
     }
   },
 
-  transferCustody: async function(serial) {
+  transferCustody: async function(serial, gtin) {
     var to = document.getElementById('trans-to').value;
     var loc = document.getElementById('trans-loc').value;
     var evt = document.getElementById('trans-event').value;
@@ -2496,7 +3015,12 @@ var BlockchainService = {
 
     if (!demoMode && contract) {
       try {
-        var productId = ethers.id(serial);
+        if (!gtin) {
+          var product = DEMO_DB.products.find(function(p) { return p.serialNumber === serial; });
+          gtin = product ? product.gtin : null;
+        }
+        if (!gtin) { Utils.showToast('GTIN required for on-chain transfer', 'error'); return; }
+        var productId = Utils.computeProductId(gtin, serial);
         var tx = await contract.transferCustody(productId, to, loc, evt);
         await tx.wait();
         Utils.showToast('Custody transferred on-chain!', 'success');
@@ -2654,15 +3178,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   } catch(e) { console.error('Dataset load error:', e); }
 
-  // Load contract address
+  // Load deployment config (served from frontend/ for Vercel and local)
   try {
     var dRes = await fetch('deployment.json');
-    if (dRes.ok) { var dInfo = await dRes.json(); contractAddress = dInfo.contractAddress; }
+    if (dRes.ok) {
+      deploymentConfig = await dRes.json();
+      contractAddress = deploymentConfig.contractAddress;
+    }
   } catch(e) {}
-  if (!contractAddress) try {
-    var dRes2 = await fetch('../deployment.json');
-    if (dRes2.ok) { var dInfo2 = await dRes2.json(); contractAddress = dInfo2.contractAddress; }
-  } catch(e2) {}
+  if (!contractAddress) contractAddress = DEFAULT_CONTRACT_ADDRESS;
+
+  // Read-only provider for verification without wallet (when RPC available)
+  if (typeof ethers !== 'undefined' && deploymentConfig && deploymentConfig.rpcUrl) {
+    try {
+      var readProvider = new ethers.JsonRpcProvider(deploymentConfig.rpcUrl);
+      readContract = new ethers.Contract(contractAddress, CONTRACT_ABI, readProvider);
+    } catch(re) { console.log('Read-only provider unavailable:', re); }
+  }
+
+  // Preload OpenEPCIS test events
+  EPCISEngine.load().catch(function() {});
 
   // Restore RBAC session + update all UI
   RBAC.restoreSession();

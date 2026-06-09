@@ -1,7 +1,7 @@
 // ============================================================
 // DawaTrace — Wallet Connection Bridge
-// Supports: Injected (MetaMask ext), Mobile Deep Links,
-//           WalletConnect v2 protocol
+// Supports: Injected wallets (MetaMask, Trust, etc.), Mobile Deep Links, Demo mode
+// Note: WalletConnect v2 QR pairing is not yet implemented
 // ============================================================
 
 var WalletBridge = {

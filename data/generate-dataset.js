@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import fs from 'fs';
+import { AbiCoder, keccak256 } from 'ethers';
 
 // ============================================================
 // DawaTrace Dataset Generator
@@ -7,7 +8,10 @@ import fs from 'fs';
 // Sources: FDA NDC, EMA, WHO Essential Medicines, Kenya PPB
 // ============================================================
 
-function hash(str) { return '0x' + crypto.createHash('sha256').update(str).digest('hex'); }
+// Matches DawaTraceV2.computeProductId: keccak256(abi.encode(gtin, serial))
+function hash(gtin, serial) {
+  return keccak256(AbiCoder.defaultAbiCoder().encode(['string', 'string'], [gtin, serial]));
+}
 function randHex(n) { return crypto.randomBytes(n).toString('hex').toUpperCase(); }
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -282,7 +286,7 @@ function generateDataset() {
         }
       }
 
-      const productId = hash(gtin + serial);
+      const productId = hash(gtin, serial);
       const supplyChain = exists ? generateSupplyChain(drug.region, mfg, mfgDate) : [];
 
       products.push({
@@ -315,7 +319,7 @@ function generateDataset() {
       // Copy serial from a genuine product
       const genuineIdx = randInt(0, 799);
       products[susIdx].serialNumber = products[genuineIdx].serialNumber;
-      products[susIdx].productId = hash(products[susIdx].gtin + products[susIdx].serialNumber);
+      products[susIdx].productId = hash(products[susIdx].gtin, products[susIdx].serialNumber);
       // Give it a different location chain to simulate clone
       products[susIdx].supplyChain = generateSupplyChain(
         pick(["US","KE","EU"]),

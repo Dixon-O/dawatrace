@@ -206,8 +206,8 @@ contract DawaTraceV2 is AccessControl {
         require(bytes(_lotNumber).length > 0, "Lot required");
         require(_expiryDate > block.timestamp, "Expiry must be future");
 
-        // Deterministic ID from GTIN + serial (globally unique per package)
-        bytes32 productId = keccak256(abi.encodePacked(_gtin, _serialNumber));
+        // Deterministic ID from GTIN + serial (length-prefixed to avoid encodePacked collisions)
+        bytes32 productId = computeProductId(_gtin, _serialNumber);
         require(!products[productId].exists, "Product already registered");
 
         // Check if lot is already recalled
@@ -288,15 +288,11 @@ contract DawaTraceV2 is AccessControl {
     // ============================================================
 
     /**
-     * @notice Verify a product — mutable, increments scan counter, emits event
+     * @notice Verify a product — read-only alias of verifyProductView (no state mutation)
+     * @dev Scan counters are deprecated; verification must not mutate on-chain state.
      */
-    function verifyProduct(bytes32 _productId) external returns (VerificationResult memory) {
-        scanCount[_productId]++;
-        totalScans++;
-
-        VerificationResult memory result = _buildVerificationResult(_productId);
-        emit ProductVerified(_productId, msg.sender, result.status, result.scanCount, block.timestamp);
-        return result;
+    function verifyProduct(bytes32 _productId) external view returns (VerificationResult memory) {
+        return _buildVerificationResult(_productId);
     }
 
     /**
@@ -318,7 +314,7 @@ contract DawaTraceV2 is AccessControl {
                 isAuthentic: false,
                 isExpired: false,
                 isRecalled: false,
-                status: "COUNTERFEIT",
+                status: "NOT_FOUND",
                 scanCount: scanCount[_productId],
                 productName: "",
                 gtin: "",
@@ -337,14 +333,12 @@ contract DawaTraceV2 is AccessControl {
         uint256 scans = scanCount[_productId];
         uint256 custody = custodyChain[_productId].length;
 
-        // Determine status with priority: RECALLED > EXPIRED > SUSPICIOUS > GENUINE
+        // Determine status with priority: RECALLED > EXPIRED > GENUINE
         string memory status;
         if (recalled) {
             status = "RECALLED";
         } else if (expired) {
             status = "EXPIRED";
-        } else if (scans > 10) {
-            status = "SUSPICIOUS";
         } else {
             status = "GENUINE";
         }
@@ -440,6 +434,13 @@ contract DawaTraceV2 is AccessControl {
     function getProductIdAtIndex(uint256 index) external view returns (bytes32) {
         require(index < productIds.length, "Index out of bounds");
         return productIds[index];
+    }
+
+    /**
+     * @notice Deterministic product ID — must match frontend keccak256(abi.encode(gtin, serial))
+     */
+    function computeProductId(string memory _gtin, string memory _serialNumber) public pure returns (bytes32) {
+        return keccak256(abi.encode(_gtin, _serialNumber));
     }
 
     function getParticipantRole(address _addr) external view returns (string memory) {

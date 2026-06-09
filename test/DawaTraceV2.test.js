@@ -144,10 +144,10 @@ describe("DawaTraceV2", function () {
             expect(r.isAuthentic).to.be.true;
             expect(r.exists).to.be.true;
         });
-        it("Should return COUNTERFEIT for unknown product", async function () {
+        it("Should return NOT_FOUND for unknown product", async function () {
             const fakeId = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("fake"));
             const r = await registry.verifyProductView(fakeId);
-            expect(r.status).to.equal("COUNTERFEIT");
+            expect(r.status).to.equal("NOT_FOUND");
             expect(r.exists).to.be.false;
         });
         it("Should return EXPIRED for expired product", async function () {

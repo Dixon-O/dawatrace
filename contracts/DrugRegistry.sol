@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 /**
  * @title DrugRegistry
+ * @dev DEPRECATED — legacy V1 contract. Use DawaTraceV2.sol and scripts/deploy-v2.js instead.
  * @dev DawaTrace - Pharmaceutical Anti-Counterfeit Verification System
  * @notice This contract manages the registration and verification of pharmaceutical
  *         products on the blockchain to combat counterfeit medicines in Kenya/Africa.

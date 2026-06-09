@@ -2,7 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const repoRoot = __dirname;
+const frontendRoot = path.join(__dirname, "frontend");
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 3000);
 
@@ -34,8 +34,8 @@ function redirect(res, location) {
   });
 }
 
-function isInsideRepo(candidate) {
-  const relative = path.relative(repoRoot, candidate);
+function isInsideFrontend(candidate) {
+  const relative = path.relative(frontendRoot, candidate);
   return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
@@ -46,18 +46,14 @@ function contentTypeFor(filePath) {
 function resolveRequestPath(requestPath) {
   const safePath = decodeURIComponent(requestPath).split("?")[0].split("#")[0];
 
-  if (safePath === "/") {
-    return { redirect: "/frontend/" };
-  }
-
-  if (safePath === "/frontend") {
-    return { redirect: "/frontend/" };
+  if (safePath === "/" || safePath === "") {
+    return { filePath: path.join(frontendRoot, "index.html") };
   }
 
   let relativePath = safePath.replace(/^\/+/, "");
-  let absolutePath = path.resolve(repoRoot, relativePath);
+  let absolutePath = path.resolve(frontendRoot, relativePath);
 
-  if (!isInsideRepo(absolutePath)) {
+  if (!isInsideFrontend(absolutePath)) {
     return { error: 403, message: "Forbidden" };
   }
 
@@ -95,6 +91,17 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
+      // SPA fallback for client-side routes
+      if (path.extname(filePath) === "") {
+        fs.readFile(path.join(frontendRoot, "index.html"), (err2, indexData) => {
+          if (err2) {
+            send(res, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
+            return;
+          }
+          send(res, 200, indexData, { "Content-Type": "text/html; charset=utf-8" });
+        });
+        return;
+      }
       send(res, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
       return;
     }
@@ -107,5 +114,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, host, () => {
   console.log(`DawaTrace running at http://${host}:${port}/`);
-  console.log(`Frontend root: http://${host}:${port}/frontend/`);
+  console.log(`Serving: ${frontendRoot}`);
 });

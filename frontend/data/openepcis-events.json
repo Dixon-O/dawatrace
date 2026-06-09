@@ -1,0 +1,90 @@
+{
+  "source": "OpenEPCIS Test Resources (GS1 CBV 2.0 format)",
+  "reference": "https://github.com/openepcis/openepcis-test-resources",
+  "events": [
+    {
+      "type": "ObjectEvent",
+      "action": "ADD",
+      "bizStep": "commissioning",
+      "eventTime": "2024-01-15T08:30:00Z",
+      "eventTimeZoneOffset": "+03:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000016.SN-6295E590"],
+      "readPoint": { "id": "urn:epc:id:sgln:0030000.plant01" },
+      "disposition": "urn:epcglobal:cbv:disp:active",
+      "ilmd": { "lotNumber": "LOT2026A28", "expiryDate": "2027-12-31" }
+    },
+    {
+      "type": "AggregationEvent",
+      "action": "ADD",
+      "bizStep": "packing",
+      "eventTime": "2024-01-16T10:00:00Z",
+      "eventTimeZoneOffset": "+03:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000016.SN-6295E590"],
+      "parentID": "urn:epc:id:sscc:0030000.0000000001",
+      "readPoint": { "id": "urn:epc:id:sgln:0030000.warehouse01" },
+      "disposition": "urn:epcglobal:cbv:disp:in_progress"
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "OBSERVE",
+      "bizStep": "shipping",
+      "eventTime": "2024-02-01T06:00:00Z",
+      "eventTimeZoneOffset": "+03:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000016.SN-6295E590"],
+      "readPoint": { "id": "urn:epc:id:sgln:0030000.dock01" },
+      "disposition": "urn:epcglobal:cbv:disp:in_transit",
+      "bizTransactionList": [{ "type": "desadv", "bizTransaction": "urn:epc:id:gdti:0030000.ASN-2024-00123" }]
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "OBSERVE",
+      "bizStep": "receiving",
+      "eventTime": "2024-02-15T14:30:00Z",
+      "eventTimeZoneOffset": "+03:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000016.SN-6295E590"],
+      "readPoint": { "id": "urn:epc:id:sgln:6161234.warehouse_nairobi" },
+      "disposition": "urn:epcglobal:cbv:disp:in_progress"
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "OBSERVE",
+      "bizStep": "dispensing",
+      "eventTime": "2024-03-01T11:00:00Z",
+      "eventTimeZoneOffset": "-05:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000016.SN-6295E590"],
+      "readPoint": { "id": "urn:epc:id:sgln:6161234.pharmacy_philadelphia" },
+      "disposition": "urn:epcglobal:cbv:disp:retail_sold"
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "ADD",
+      "bizStep": "commissioning",
+      "eventTime": "2024-03-10T07:00:00Z",
+      "eventTimeZoneOffset": "+05:30",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000025.SN-FA225AF3"],
+      "readPoint": { "id": "urn:epc:id:sgln:0687888.plant_india" },
+      "disposition": "urn:epcglobal:cbv:disp:active",
+      "ilmd": { "lotNumber": "LOT2026B36", "expiryDate": "2027-06-30" }
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "OBSERVE",
+      "bizStep": "shipping",
+      "eventTime": "2024-03-20T12:00:00Z",
+      "eventTimeZoneOffset": "+05:30",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000025.SN-FA225AF3"],
+      "readPoint": { "id": "urn:epc:id:sgln:0687888.port_mumbai" },
+      "disposition": "urn:epcglobal:cbv:disp:in_transit"
+    },
+    {
+      "type": "ObjectEvent",
+      "action": "OBSERVE",
+      "bizStep": "receiving",
+      "eventTime": "2024-04-05T08:00:00Z",
+      "eventTimeZoneOffset": "+03:00",
+      "epcList": ["urn:epc:id:sgtin:0030000.0000025.SN-FA225AF3"],
+      "readPoint": { "id": "urn:epc:id:sgln:6161234.port_mombasa" },
+      "disposition": "urn:epcglobal:cbv:disp:in_progress"
+    }
+  ]
+}

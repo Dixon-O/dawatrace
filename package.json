@@ -6,10 +6,11 @@
   "scripts": {
     "node": "npx hardhat node",
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat run scripts/deploy.js --network localhost",
-    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy": "npx hardhat run scripts/deploy-v2.js --network localhost",
+    "deploy:local": "npx hardhat run scripts/deploy-v2.js --network localhost",
+    "deploy:v1": "npx hardhat run scripts/deploy.js --network localhost",
     "test": "npx hardhat test",
-    "serve": "npx -y serve -s frontend -l 3000",
+    "serve": "node server.js",
     "clean": "npx hardhat clean"
   },
   "keywords": [

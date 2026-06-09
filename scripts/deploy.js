@@ -2,6 +2,7 @@ import hre from "hardhat";
 import fs from "fs";
 
 async function main() {
+    console.warn("⚠️  DEPRECATED: deploy.js targets legacy DrugRegistry V1. Use: npm run deploy (deploy-v2.js)\n");
     console.log("🔗 Deploying DawaTrace DrugRegistry...\n");
 
     const DrugRegistry = await hre.ethers.getContractFactory("DrugRegistry");

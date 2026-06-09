@@ -96,7 +96,9 @@ async function main() {
         sampleProducts: products.length,
         timestamp: new Date().toISOString(),
     };
-    fs.writeFileSync("./deployment.json", JSON.stringify(info, null, 2));
+    const json = JSON.stringify(info, null, 2);
+    fs.writeFileSync("./deployment.json", json);
+    fs.writeFileSync("./frontend/deployment.json", json);
 
     console.log("\n" + "=".repeat(60));
     console.log("🎉 DawaTraceV2 deployment complete!");
